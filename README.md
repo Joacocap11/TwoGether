@@ -64,7 +64,7 @@ docker run --rm -v twogether_uploads:/data -v "$PWD":/backup alpine tar czf /bac
 
 Restaura ambos elementos únicamente con los servicios detenidos o siguiendo el procedimiento de mantenimiento de tu servidor. WireGuard y el acceso desde Proxmox son responsabilidad de la infraestructura externa.
 
-La interfaz web cubre actualmente login, dashboard con datos reales, CRUD de lugares y tests, valoraciones por usuario, platos dentro del detalle y uploads para lugares, platos y tests. No se incluyen funcionalidades fuera del MVP.
+La interfaz web cubre actualmente login, dashboard con datos reales, listado/búsqueda/detalle y alta de lugares, valoraciones por usuario, alta de platos dentro del detalle, CRUD de tests y uploads para lugares, platos y tests. La edición/eliminación visual de lugares y platos aún requiere completar sus controles de interfaz; los endpoints backend correspondientes existen. No se incluyen funcionalidades fuera del MVP.
 ## Desarrollo
 
 Backend separado:
