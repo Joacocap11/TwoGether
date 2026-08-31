@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from sqlalchemy import String, Text, Date, DateTime, ForeignKey, Float, Boolean, func
+from sqlalchemy import String, Text, Date, DateTime, ForeignKey, Float, Boolean, func, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .db import Base
 
@@ -13,6 +13,7 @@ class User(Base):
     created_at: Mapped[datetime]=mapped_column(DateTime, server_default=func.now())
     ratings=relationship('UserRating', back_populates='user')
     dishes=relationship('Dish', back_populates='user')
+    test_outcomes=relationship('TestOutcome', back_populates='user')
 
 class PlaceVisit(Base):
     __tablename__='place_visits'
@@ -61,3 +62,16 @@ class TestRecord(Base):
     image_path: Mapped[str|None]=mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime]=mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime]=mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    outcomes=relationship('TestOutcome', back_populates='test_record', cascade='all, delete-orphan')
+
+
+class TestOutcome(Base):
+    __tablename__='test_outcomes'
+    __table_args__=(UniqueConstraint('test_record_id','user_id',name='uq_test_outcome_record_user'),)
+    id: Mapped[int]=mapped_column(primary_key=True)
+    test_record_id: Mapped[int]=mapped_column(ForeignKey('test_records.id'), nullable=False)
+    user_id: Mapped[int]=mapped_column(ForeignKey('users.id'), nullable=False)
+    result: Mapped[str]=mapped_column(Text, nullable=False)
+    image_path: Mapped[str|None]=mapped_column(String(500), nullable=True)
+    test_record=relationship('TestRecord', back_populates='outcomes')
+    user=relationship('User', back_populates='test_outcomes')
