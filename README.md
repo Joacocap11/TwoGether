@@ -31,14 +31,13 @@ Variables principales en `.env`:
 
 | Variable | Uso |
 | --- | --- |
-| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Credenciales de PostgreSQL |
-| `DATABASE_URL` | URL SQLAlchemy/psycopg de la API |
+| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_PORT` | Componentes de conexión PostgreSQL; la API construye `DATABASE_URL` y codifica la contraseña |
 | `JWT_SECRET_KEY` | Secreto para firmar tokens; usar uno aleatorio en despliegue |
 | `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` | Duración del access token |
 | `CORS_ORIGINS` | Orígenes permitidos separados por coma |
 | `VITE_API_URL` | URL pública de la API para el frontend |
 | `API_PORT`, `FRONTEND_PORT` | Puertos publicados localmente |
-| `UPLOAD_MAX_SIZE_MB` | Tamaño máximo de imágenes |
+| `UPLOAD_MAX_SIZE_BYTES` | Tamaño máximo de imágenes |
 
 `.env` y secretos no se versionan. Usa `.env.example` como plantilla.
 
@@ -47,10 +46,10 @@ Variables principales en `.env`:
 Crear las dos cuentas con el comando de seed documentado por la API:
 
 ```bash
-docker compose exec api python -m app.seed
+docker compose exec api python seed.py
 ```
 
-El seed es idempotente y crea Joaco y Selena con las credenciales indicadas por variables `INITIAL_JOACO_PASSWORD` e `INITIAL_SELENA_PASSWORD` (añádelas temporalmente al `.env`; nunca las subas). Si el seed solicita parámetros, consulta `--help`.
+El seed es idempotente. Usa `INITIAL_JOACO_EMAIL`, `INITIAL_JOACO_PASSWORD`, `INITIAL_SELENA_EMAIL` e `INITIAL_SELENA_PASSWORD` únicamente desde `.env` privado. Informa qué usuarios creó y cuáles ya existían. El registro HTTP está deshabilitado por defecto (`REGISTRATION_ENABLED=false`).
 
 
 ## Backup básico
@@ -58,8 +57,7 @@ El seed es idempotente y crea Joaco y Selena con las credenciales indicadas por 
 Realiza copias periódicas de la base de datos y del volumen de uploads:
 
 ```bash
-docker compose exec -T db pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > twogether.sql
-docker run --rm -v twogether_uploads:/data -v "$PWD":/backup alpine tar czf /backup/twogether-uploads.tgz -C /data .
+docker compose run --rm -e TESTING=true -e DATABASE_URL=sqlite:///./test_twogether.db -e REGISTRATION_ENABLED=true api pytest
 ```
 
 Restaura ambos elementos únicamente con los servicios detenidos o siguiendo el procedimiento de mantenimiento de tu servidor. WireGuard y el acceso desde Proxmox son responsabilidad de la infraestructura externa.
