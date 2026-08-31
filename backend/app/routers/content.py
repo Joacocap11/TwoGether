@@ -12,6 +12,17 @@ def dishes(db:Session=Depends(get_db),_=Depends(get_current_user)): return db.qu
 def add_dish(data:DishCreate,db:Session=Depends(get_db),_=Depends(get_current_user)):
     if not db.query(PlaceVisit).filter(PlaceVisit.id==data.visit_id,PlaceVisit.deleted_at.is_(None)).first(): raise HTTPException(404,'Place not found')
     d=Dish(**data.model_dump()); db.add(d); db.commit(); db.refresh(d); return d
+@router.put('/dishes/{dish_id}',response_model=DishOut)
+def update_dish(dish_id:int,data:DishCreate,db:Session=Depends(get_db),_=Depends(get_current_user)):
+    d=db.get(Dish,dish_id)
+    if not d: raise HTTPException(404,'Dish not found')
+    for key,value in data.model_dump().items(): setattr(d,key,value)
+    db.commit(); db.refresh(d); return d
+@router.delete('/dishes/{dish_id}',status_code=204)
+def delete_dish(dish_id:int,db:Session=Depends(get_db),_=Depends(get_current_user)):
+    d=db.get(Dish,dish_id)
+    if not d: raise HTTPException(404,'Dish not found')
+    db.delete(d); db.commit()
 @router.post('/dishes/{dish_id}/upload',response_model=DishOut)
 async def dish_upload(dish_id:int,image:UploadFile=File(...),db:Session=Depends(get_db),_=Depends(get_current_user)):
     d=db.get(Dish,dish_id)

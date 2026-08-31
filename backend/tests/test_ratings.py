@@ -1,5 +1,6 @@
 import os
 os.environ['DATABASE_URL']='sqlite:///./test_twogether.db'
+os.environ['REGISTRATION_ENABLED']='true'
 from fastapi.testclient import TestClient
 from app.main import app
 from app.db import Base,engine

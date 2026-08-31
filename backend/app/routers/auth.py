@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from ..config import settings
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from ..db import get_db
@@ -8,6 +9,8 @@ from ..auth import hash_password, verify_password, create_access_token, get_curr
 router=APIRouter(prefix='/auth',tags=['auth'])
 @router.post('/register',response_model=UserOut,status_code=201)
 def register(data:UserCreate,db:Session=Depends(get_db)):
+    if not settings.registration_enabled: raise HTTPException(403,'Registration is disabled; use the seed command')
+    if db.query(User).count() >= 2: raise HTTPException(403,'Registration is disabled for this private application')
     if db.query(User).filter(User.email==data.email).first(): raise HTTPException(409,'Email already registered')
     u=User(name=data.name,email=data.email,hashed_password=hash_password(data.password)); db.add(u); db.commit(); db.refresh(u); return u
 @router.post('/login',response_model=Token)

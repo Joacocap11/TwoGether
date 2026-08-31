@@ -52,6 +52,19 @@ docker compose exec api python -m app.seed
 
 El seed es idempotente y crea Joaco y Selena con las credenciales indicadas por variables `INITIAL_JOACO_PASSWORD` e `INITIAL_SELENA_PASSWORD` (añádelas temporalmente al `.env`; nunca las subas). Si el seed solicita parámetros, consulta `--help`.
 
+
+## Backup básico
+
+Realiza copias periódicas de la base de datos y del volumen de uploads:
+
+```bash
+docker compose exec -T db pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > twogether.sql
+docker run --rm -v twogether_uploads:/data -v "$PWD":/backup alpine tar czf /backup/twogether-uploads.tgz -C /data .
+```
+
+Restaura ambos elementos únicamente con los servicios detenidos o siguiendo el procedimiento de mantenimiento de tu servidor. WireGuard y el acceso desde Proxmox son responsabilidad de la infraestructura externa.
+
+La interfaz web cubre actualmente login, dashboard con datos reales, CRUD de lugares y tests, valoraciones por usuario, platos dentro del detalle y uploads para lugares, platos y tests. No se incluyen funcionalidades fuera del MVP.
 ## Desarrollo
 
 Backend separado:
