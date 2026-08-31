@@ -108,7 +108,7 @@ En la VM/LXC de aplicaciones, copia el repositorio y un `.env` privado, configur
 
 ## Modelo y reglas
 
-Una visita (`PlaceVisit`) puede tener muchos platos (`Dish`) y ratings (`PlaceRating`) relacionados con usuarios. El promedio se calcula en las respuestas y nunca se persiste. Ratings y puntuaciones de platos aceptan únicamente enteros de 1 a 10. Las visitas y tests soportan soft delete.
+Una visita (`PlaceVisit`) puede tener muchos platos (`Dish`) y ratings (`UserRating`) relacionados con los dos usuarios compartidos. El promedio se calcula en las respuestas y nunca se persiste. `POST /api/v1/places/complete` y `PUT /api/v1/places/{id}/complete` guardan una salida completa en una operación lógica. Los resultados de tests se modelan como `TestOutcome`, uno por usuario, mediante `POST/PUT /api/v1/tests/complete`. Ratings y puntuaciones de platos aceptan únicamente valores de 1 a 10. Las visitas soportan soft delete.
 
 ## Fuera del alcance
 
