@@ -1,7 +1,8 @@
 export const API_URL=(import.meta.env.VITE_API_URL||'http://localhost:8000/api/v1').replace(/\/$/,'');
 export const API_ORIGIN=API_URL.replace(/\/api\/v1\/?$/,'');
 export type User={id:number;name:string;email?:string};
-export type Place={id:number;name:string;visit_date:string;location?:string|null;notes?:string|null;image_path?:string|null;photos?:string[];average_rating?:number|null;place_average_rating?:number|null;dish_average_rating?:number|null;ratings?:Rating[];dishes?:Dish[]};
+export type PlaceCategory='lunch'|'snack'|'dinner';
+export type Place={id:number;name:string;category?:PlaceCategory|null;visit_date:string;location?:string|null;notes?:string|null;image_path?:string|null;photos?:string[];average_rating?:number|null;place_average_rating?:number|null;dish_average_rating?:number|null;ratings?:Rating[];dishes?:Dish[]};
 export type Dish={id:number;name:string;description?:string|null;visit_id:number;user_id:number;score:number;notes?:string|null;image_path?:string|null};
 export type Rating={id:number;score:number;comment?:string|null;user_id:number;visit_id:number};
 export type TestOutcome={id:number;user_id:number;result?:string|null;image_path?:string|null};

@@ -12,7 +12,7 @@ def token(email):
     return client.post('/api/v1/auth/login',data={'username':email,'password':'password123'}).json()['access_token']
 def test_rating_rules_and_average():
     joaco=token('a@example.com'); h={'Authorization':f'Bearer {joaco}'}
-    p=client.post('/api/v1/places',json={'name':'Cafe','visit_date':'2025-01-01','location':'Madrid'},headers=h).json()
+    p=client.post('/api/v1/places',json={'name':'Cafe','visit_date':'2025-01-01','location':'Madrid','category':'lunch'},headers=h).json()
     assert client.post(f"/api/v1/places/{p['id']}/ratings",json={'score':0},headers=h).status_code==422
     assert client.post(f"/api/v1/places/{p['id']}/ratings",json={'score':11},headers=h).status_code==422
     assert client.post(f"/api/v1/places/{p['id']}/ratings",json={'score':5},headers=h).status_code==201
@@ -28,9 +28,9 @@ def test_rating_rules_and_average():
     test=client.post('/api/v1/tests/complete',json={'title':'Check','test_date':'2025-01-02','outcomes':[{'user_id':1},{'user_id':2}]},headers=h)
     assert test.status_code==201
     assert test.json()['result'] is None
-    complete=client.post('/api/v1/places/complete',json={'place':{'name':'Dinner','visit_date':'2025-01-03'},'entries':[{'user_id':1,'dish':{'name':'A','score':6},'rating':{'score':7,'comment':'ok'}},{'user_id':2,'dish':{'name':'B','score':8},'rating':{'score':9,'comment':'great'}}]},headers=h).json()
+    complete=client.post('/api/v1/places/complete',json={'place':{'name':'Dinner','visit_date':'2025-01-03','category':'dinner'},'entries':[{'user_id':1,'dish':{'name':'A','score':6},'rating':{'score':7,'comment':'ok'}},{'user_id':2,'dish':{'name':'B','score':8},'rating':{'score':9,'comment':'great'}}]},headers=h).json()
     place_id=complete['id']
-    assert client.put(f'/api/v1/places/{place_id}/complete',json={'place':{'name':'Dinner edited','visit_date':'2025-01-04','location':'Madrid'},'entries':[{'user_id':1,'dish':{'name':'A2','score':7},'rating':{'score':8,'comment':'updated'}},{'user_id':2,'dish':{'name':'B2','score':9},'rating':{'score':10,'comment':'updated'}}]},headers=h).status_code==200
+    assert client.put(f'/api/v1/places/{place_id}/complete',json={'place':{'name':'Dinner edited','visit_date':'2025-01-04','location':'Madrid','category':'snack'},'entries':[{'user_id':1,'dish':{'name':'A2','score':7},'rating':{'score':8,'comment':'updated'}},{'user_id':2,'dish':{'name':'B2','score':9},'rating':{'score':10,'comment':'updated'}}]},headers=h).status_code==200
     updated=client.get(f'/api/v1/places/{place_id}',headers=h).json()
     assert updated['id']==place_id and updated['name']=='Dinner edited'
     assert {d['name'] for d in updated['dishes']}=={'A2','B2'}

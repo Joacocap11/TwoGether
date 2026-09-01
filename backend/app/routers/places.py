@@ -13,7 +13,7 @@ def view(p, detail=False):
     dish_average=sum(d.score for d in p.dishes)/len(p.dishes) if p.dishes else None
     photos=[p.image_path] if p.image_path else []
     photos.extend(d.image_path for d in p.dishes if d.image_path)
-    result={**{k:getattr(p,k) for k in ('id','name','visit_date','location','notes','image_path','created_at','updated_at')},
+    result={**{k:getattr(p,k) for k in ('id','name','visit_date','location','notes','category','image_path','created_at','updated_at')},
             'average_rating':place_average, 'place_average_rating':place_average,
             'dish_average_rating':dish_average, 'photos':photos}
     if detail: result.update(ratings=p.ratings, dishes=p.dishes)

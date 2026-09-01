@@ -1,5 +1,10 @@
 from datetime import date, datetime
-from sqlalchemy import String, Text, Date, DateTime, ForeignKey, Float, Boolean, func, UniqueConstraint
+from enum import Enum
+from sqlalchemy import String, Text, Date, DateTime, ForeignKey, Float, Boolean, func, UniqueConstraint, Enum as SQLEnum
+class PlaceCategory(str, Enum):
+    LUNCH='lunch'
+    SNACK='snack'
+    DINNER='dinner'
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .db import Base
 
@@ -17,6 +22,7 @@ class User(Base):
 
 class PlaceVisit(Base):
     __tablename__='place_visits'
+    category: Mapped[PlaceCategory|None]=mapped_column(SQLEnum(PlaceCategory,native_enum=False,length=6), nullable=True)
     id: Mapped[int]=mapped_column(primary_key=True)
     name: Mapped[str]=mapped_column(String(200), index=True)
     visit_date: Mapped[date]=mapped_column(Date)
