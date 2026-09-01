@@ -1,0 +1,14 @@
+import React, { useMemo, useState } from 'react';
+import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
+import { api, Place } from '../../src/api';
+import { Button, DateText, ErrorState, Loading, Photo, Stars, styles, colors } from '../../src/ui';
+export default function Restaurants() {
+  const router = useRouter(); const query = useQuery({ queryKey: ['places'], queryFn: api.places }); const [search, setSearch] = useState(''); const [category, setCategory] = useState('all');
+  const categories = useMemo(() => ['all', ...new Set((query.data ?? []).map(item => item.category).filter(Boolean) as string[])], [query.data]);
+  const items = (query.data ?? []).filter(item => (!search || `${item.name} ${item.location ?? ''}`.toLowerCase().includes(search.toLowerCase())) && (category === 'all' || item.category === category));
+  if (query.isPending) return <Loading />; if (query.isError) return <ErrorState message={(query.error as Error).message} retry={() => query.refetch()} />;
+  return <View style={styles.screen}><FlatList data={items} keyExtractor={item => String(item.id)} contentContainerStyle={styles.content} refreshing={query.isRefetching} onRefresh={() => query.refetch()} ListHeaderComponent={<><Text style={styles.title}>Restaurants</Text><Text style={styles.subtitle}>The places and flavours you share.</Text><TextInput value={search} onChangeText={setSearch} placeholder="Search by name or location" placeholderTextColor="#b29e95" style={styles.input} /><View style={{ flexDirection: 'row', marginBottom: 16 }}>{categories.map(value => <Pressable key={value} onPress={() => setCategory(value)} style={[styles.chip, category === value && styles.chipActive]}><Text style={[styles.chipText, category === value && styles.chipTextActive]}>{value === 'all' ? 'All' : value}</Text></Pressable>)}</View><Button title="＋ New restaurant" onPress={() => router.push('/place/new')} /></>} renderItem={({ item }) => <RestaurantCard item={item} onPress={() => router.push(`/place/${item.id}`)} />} ListEmptyComponent={<View style={styles.empty}><Text style={styles.muted}>No restaurants yet.</Text></View>} /></View>;
+}
+function RestaurantCard({ item, onPress }: { item: Place; onPress: () => void }) { return <Pressable onPress={onPress} style={[styles.card, { flexDirection: 'row', gap: 13 }]}><Photo path={item.image_path} /><View style={{ flex: 1 }}><Text style={{ color: colors.ink, fontSize: 18, fontWeight: '800' }}>{item.name}</Text><DateText value={item.visit_date} />{item.location ? <Text style={styles.muted}>{item.location}</Text> : null}<View style={[styles.row, { marginTop: 5 }]}><Stars score={item.average_rating ?? 0} /><Text style={styles.muted}>{item.average_rating ? item.average_rating.toFixed(1) : '—'}</Text></View></View></Pressable>; }

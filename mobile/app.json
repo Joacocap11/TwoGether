@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "TwoGether",
+    "slug": "twogether",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "twogether",
+    "userInterfaceStyle": "light",
+    "icon": "./assets/twogether-icon.png",
+    "splash": {
+      "image": "./assets/twogether-login.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#fff8f3"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.twogether.mobile",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "TwoGether uses your photos for visit memories."
+      }
+    },
+    "android": {
+      "package": "com.twogether.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/twogether-icon.png",
+        "backgroundColor": "#fff8f3"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "TwoGether uses your photos for visit memories."
+        }
+      ],
+      "expo-asset",
+      "expo-font"
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      }
+    }
+  }
+}
