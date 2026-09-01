@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Image, KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { ApiError } from '../../src/api';
 import { useAuth } from '../../src/auth';
 import { Button, Field } from '../../src/ui';
@@ -22,17 +23,18 @@ function loginErrorMessage(error: unknown) {
 
 export default function Login() {
   const { signIn } = useAuth();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-
   async function submit() {
     if (busy) return;
     setError('');
     setBusy(true);
     try {
-      await signIn(email, password);
+      const mustChangePassword = await signIn(email, password);
+      router.replace(mustChangePassword ? '/(auth)/change-password' : '/(tabs)');
     } catch (cause) {
       setError(loginErrorMessage(cause));
     } finally {
