@@ -16,31 +16,53 @@ export type MediaRating = { id?: number; user_id: number; score: number; opinion
 export type Hotel = { id: number; name: string; visit_date: string; location?: string | null; total_price?: number | null; currency?: 'UYU' | 'USD' | null; image_path?: string | null; average_rating?: number | null; ratings: HotelRating[] };
 export type HotelRating = { id?: number; user_id: number; score: number; opinion?: string | null };
 
-export class ApiError extends Error { constructor(public status: number, message: string) { super(message); } }
+export class ApiError extends Error { constructor(public status: number, message: string) { super(message); this.name = 'ApiError'; } }
+export function formatApiError(detail: unknown, status: number) {
+  if (typeof detail === 'string' && detail.trim()) return detail.trim();
+  if (Array.isArray(detail)) {
+    const messages = detail.map(item => {
+      if (typeof item === 'string') return item;
+      if (item && typeof item === 'object' && 'msg' in item && typeof item.msg === 'string') return item.msg;
+      return '';
+    }).filter(Boolean);
+    if (messages.length) return messages.join(' · ');
+  }
+  if (detail && typeof detail === 'object' && 'msg' in detail && typeof detail.msg === 'string') return detail.msg;
+  return status ? `No se pudo completar la solicitud (${status})` : 'No se pudo conectar con TwoGether.';
+}
 export const imageUrl = (path?: string | null) => path ? (path.startsWith('http') ? path : `${API_BASE_URL}${path.startsWith('/') ? '' : '/uploads/'}${path.startsWith('/') ? path : ''}`) : undefined;
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  if (!API_BASE_URL) throw new ApiError(0, 'EXPO_PUBLIC_API_BASE_URL is not configured');
+  if (!API_BASE_URL) throw new ApiError(0, 'No se pudo conectar con TwoGether.');
   const token = await SecureStore.getItemAsync(TOKEN_KEY);
   const headers = new Headers(init.headers);
   if (token) headers.set('Authorization', `Bearer ${token}`);
   if (!(init.body instanceof FormData)) headers.set('Content-Type', 'application/json');
-  const response = await fetch(`${API_ROOT}${path}`, { ...init, headers });
-  if (response.status === 401) { await SecureStore.deleteItemAsync(TOKEN_KEY); throw new ApiError(401, 'Your session expired. Please log in again.'); }
+  let response: Response;
+  try { response = await fetch(`${API_ROOT}${path}`, { ...init, headers }); }
+  catch { throw new ApiError(0, 'No se pudo conectar con TwoGether.'); }
+  if (response.status === 401) { await SecureStore.deleteItemAsync(TOKEN_KEY); throw new ApiError(401, 'La sesión expiró.'); }
   if (!response.ok) {
-    let message = `Request failed (${response.status})`;
-    try { const body = await response.json(); message = body.detail ?? message; } catch { /* non-JSON response */ }
-    throw new ApiError(response.status, typeof message === 'string' ? message : JSON.stringify(message));
+    let detail: unknown;
+    try { detail = (await response.json()).detail; } catch { /* non-JSON response */ }
+    throw new ApiError(response.status, formatApiError(detail, response.status));
   }
   if (response.status === 204) return undefined as T;
   return response.json();
 }
 
 export async function login(email: string, password: string) {
-  if (!API_BASE_URL) throw new ApiError(0, 'Set EXPO_PUBLIC_API_BASE_URL before connecting.');
+  if (!API_BASE_URL) throw new ApiError(0, 'No se pudo conectar con TwoGether.');
   const body = new URLSearchParams({ username: email, password });
-  const response = await fetch(`${API_ROOT}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
-  if (!response.ok) { let message = 'Unable to sign in'; try { message = (await response.json()).detail ?? message; } catch {} throw new ApiError(response.status, message); }
+  let response: Response;
+  try {
+    response = await fetch(`${API_ROOT}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
+  } catch { throw new ApiError(0, 'No se pudo conectar con TwoGether.'); }
+  if (!response.ok) {
+    let detail: unknown;
+    try { detail = (await response.json()).detail; } catch { /* non-JSON response */ }
+    throw new ApiError(response.status, formatApiError(detail, response.status));
+  }
   const token: { access_token: string; must_change_password: boolean } = await response.json();
   await SecureStore.setItemAsync(TOKEN_KEY, token.access_token);
   return token;
