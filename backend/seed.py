@@ -20,8 +20,7 @@ try:
         if user:
             existing.append(email)
         else:
-            db.add(User(name=name, email=email, hashed_password=hash_password(password)))
-            created.append(email)
+            db.add(User(name=name, email=email, hashed_password=hash_password(password), is_admin=name == 'Joaco'))
     db.commit()
 finally:
     db.close()

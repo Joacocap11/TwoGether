@@ -4,7 +4,8 @@ os.environ['TESTING']='true'
 os.environ['REGISTRATION_ENABLED']='true'
 from fastapi.testclient import TestClient
 from app.main import app
-from app.db import Base,engine
+from app.db import Base,engine,SessionLocal
+from app.models import User
 Base.metadata.drop_all(engine); Base.metadata.create_all(engine)
 client=TestClient(app)
 def token(email):
@@ -64,3 +65,24 @@ def test_media_and_hotels_crud():
     assert client.delete(f'/api/v1/hotels/{hotel_id}',headers=h).status_code==204
     assert client.get('/api/v1/media',headers={}).status_code==401
     assert client.get('/api/v1/hotels',headers={}).status_code==401
+def test_admin_user_management_and_password_flow():
+    with SessionLocal() as db:
+        db.query(User).filter(User.email=='a@example.com').update({'is_admin':True})
+        db.commit()
+    admin_token=client.post('/api/v1/auth/login',data={'username':'a@example.com','password':'password123'}).json()['access_token']
+    ah={'Authorization':f'Bearer {admin_token}'}
+    created=client.post('/api/v1/users',json={'name':'Temp User','email':'temp@example.com','password':'temporary123'},headers=ah)
+    assert created.status_code==201 and created.json()['must_change_password'] is True
+    assert '$2b$' not in created.text
+    with SessionLocal() as db:
+        stored=db.query(User).filter(User.email=='temp@example.com').one()
+        assert stored.hashed_password != 'temporary123' and stored.hashed_password.startswith('$2b$')
+    assert client.post('/api/v1/users',json={'name':'Duplicate','email':'temp@example.com','password':'temporary123'},headers=ah).status_code==409
+    temp_login=client.post('/api/v1/auth/login',data={'username':'temp@example.com','password':'temporary123'})
+    assert temp_login.status_code==200 and temp_login.json()['must_change_password'] is True
+    temp_token=temp_login.json()['access_token']; th={'Authorization':f'Bearer {temp_token}'}
+    assert client.post('/api/v1/auth/change-password',json={'new_password':'personal123','confirm_password':'personal123'},headers=th).status_code==200
+    assert client.post('/api/v1/auth/login',data={'username':'temp@example.com','password':'temporary123'}).status_code==401
+    assert client.post('/api/v1/auth/login',data={'username':'temp@example.com','password':'personal123'}).status_code==200
+    assert client.post('/api/v1/auth/change-password',json={'current_password':'wrong123','new_password':'newpersonal123','confirm_password':'newpersonal123'},headers=th).status_code==400
+    assert client.post('/api/v1/users',json={'name':'Nope','email':'nope@example.com','password':'temporary123'},headers=th).status_code==403

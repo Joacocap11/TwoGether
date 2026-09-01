@@ -4,9 +4,11 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from .models import PlaceCategory
 
 class UserCreate(BaseModel): name: str = Field(min_length=1,max_length=120); email: EmailStr; password: str = Field(min_length=8)
-class UserOut(BaseModel): model_config=ConfigDict(from_attributes=True); id:int; name:str; email:EmailStr; is_active:bool; created_at:datetime|None=None
+class UserOut(BaseModel): model_config=ConfigDict(from_attributes=True); id:int; name:str; email:EmailStr; is_active:bool; is_admin:bool; must_change_password:bool; created_at:datetime|None=None
 class UserSummary(BaseModel): model_config=ConfigDict(from_attributes=True); id:int; name:str
-class Token(BaseModel): access_token:str; token_type:str='bearer'
+class AdminUserCreate(UserCreate): pass
+class PasswordChange(BaseModel): current_password:str|None=None; new_password:str=Field(min_length=8); confirm_password:str=Field(min_length=8)
+class Token(BaseModel): access_token:str; token_type:str='bearer'; must_change_password:bool=False
 class PlaceBase(BaseModel): name:str; visit_date:date; location:str|None=None; notes:str|None=None; category:PlaceCategory|None=None
 class PlaceCreate(PlaceBase): category:PlaceCategory
 class RatingCreate(BaseModel): score:float=Field(ge=1,le=10); comment:str|None=None

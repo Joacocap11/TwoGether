@@ -15,6 +15,8 @@ class User(Base):
     email: Mapped[str]=mapped_column(String(255), unique=True, index=True)
     hashed_password: Mapped[str]=mapped_column(String(255))
     is_active: Mapped[bool]=mapped_column(Boolean, default=True)
+    is_admin: Mapped[bool]=mapped_column(Boolean, default=False)
+    must_change_password: Mapped[bool]=mapped_column(Boolean, default=False)
     created_at: Mapped[datetime]=mapped_column(DateTime, server_default=func.now())
     ratings=relationship('UserRating', back_populates='user')
     dishes=relationship('Dish', back_populates='user')
