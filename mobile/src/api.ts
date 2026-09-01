@@ -53,7 +53,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export async function login(email: string, password: string) {
   if (!API_BASE_URL) throw new ApiError(0, 'No se pudo conectar con TwoGether.');
-  const body = new URLSearchParams({ username: email, password });
+  const body = `username=${encodeURIComponent(email.trim())}&password=${encodeURIComponent(password)}`;
   let response: Response;
   try {
     response = await fetch(`${API_ROOT}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
