@@ -102,9 +102,19 @@ cd frontend && npm run lint
 cd frontend && npm run build
 ```
 
-## Despliegue básico
+## Producción / Proxmox
 
-En la VM/LXC de aplicaciones, copia el repositorio y un `.env` privado, configura un dominio/reverse proxy externo si corresponde y ejecuta `docker compose up -d --build`. Publica únicamente el frontend y la API necesarios; no publiques PostgreSQL. Usa secretos largos y backups de los volúmenes de PostgreSQL/uploads.
+Desde la instancia de producción:
+
+```bash
+cd /srv/apps/TwoGether
+git pull
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+Acceso: `http://IP_SERVIDOR:3001`
+
+El frontend consume la API mediante `/api/v1` y Nginx reenvía también `/uploads/` al servicio `api` interno. La API y PostgreSQL no necesitan publicar puertos directamente al host. Los volúmenes persistentes `postgres_data` y `uploads` se mantienen sin cambios.
 
 ## Modelo y reglas
 
