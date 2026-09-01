@@ -62,7 +62,7 @@ docker compose run --rm -e TESTING=true -e DATABASE_URL=sqlite:///./test_twogeth
 
 Restaura ambos elementos únicamente con los servicios detenidos o siguiendo el procedimiento de mantenimiento de tu servidor. WireGuard y el acceso desde Proxmox son responsabilidad de la infraestructura externa.
 
-La interfaz web cubre actualmente login, dashboard con datos reales, listado/búsqueda/detalle y alta de lugares, valoraciones por usuario, alta de platos dentro del detalle, CRUD de tests y uploads para lugares, platos y tests. La edición/eliminación visual de lugares y platos aún requiere completar sus controles de interfaz; los endpoints backend correspondientes existen. No se incluyen funcionalidades fuera del MVP.
+La interfaz web cubre login, dashboard con datos reales, formulario único de salida compartida con datos de Joaco y Selena, puntuaciones de plato y lugar, opiniones, fotos independientes y collages CSS. Tests usan un único formulario con nombre, fecha, dos capturas y notas opcionales; no requieren resultados textuales. Los promedios de plato y lugar se calculan dinámicamente. No se incluyen funcionalidades fuera del MVP.
 ## Desarrollo
 
 Backend separado:
@@ -108,7 +108,7 @@ En la VM/LXC de aplicaciones, copia el repositorio y un `.env` privado, configur
 
 ## Modelo y reglas
 
-Una visita (`PlaceVisit`) puede tener muchos platos (`Dish`) y ratings (`UserRating`) relacionados con los dos usuarios compartidos. El promedio se calcula en las respuestas y nunca se persiste. `POST /api/v1/places/complete` y `PUT /api/v1/places/{id}/complete` guardan una salida completa en una operación lógica. Los resultados de tests se modelan como `TestOutcome`, uno por usuario, mediante `POST/PUT /api/v1/tests/complete`. Ratings y puntuaciones de platos aceptan únicamente valores de 1 a 10. Las visitas soportan soft delete.
+Una visita (`PlaceVisit`) tiene muchos platos (`Dish`) y ratings (`UserRating`) relacionados con los dos usuarios compartidos. `UserRating.comment` es la única opinión libre por persona. `TestOutcome` guarda una captura opcional por usuario; los campos textuales de resultado se mantienen nullable únicamente para compatibilidad histórica y ya no se usan en el flujo actual. Los promedios de plato y lugar se calculan dinámicamente y nunca se persisten.
 
 ## Fuera del alcance
 

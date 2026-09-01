@@ -1,6 +1,6 @@
 import React,{useEffect,useState} from 'react';
 import {createRoot} from 'react-dom/client';
-import {ArrowLeft,Check,Heart,ImagePlus,LoaderCircle,LogOut,MapPin,Plus,Search,Star,Trash2,X,Pencil} from 'lucide-react';
+import {ArrowLeft,Check,Heart,ImagePlus,LoaderCircle,LogOut,Plus,Search,Star,Trash2,X,Pencil} from 'lucide-react';
 import {api,Dish,Place,Rating,TestOutcome,TestRecord,User,endpoints,imageUrl} from './api';
 import './styles.css';
 const Busy=()=> <LoaderCircle className="spin" size={18}/>;
