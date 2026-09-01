@@ -17,20 +17,32 @@ export type Hotel = { id: number; name: string; visit_date: string; location?: s
 export type HotelRating = { id?: number; user_id: number; score: number; opinion?: string | null };
 
 export class ApiError extends Error { constructor(public status: number, message: string) { super(message); this.name = 'ApiError'; } }
+const apiMessageTranslations: Record<string, string> = {
+  'Incorrect email or password': 'Correo o contraseña incorrectos.',
+  'Field required': 'Este campo es obligatorio.',
+  'Passwords do not match': 'Las contraseñas no coinciden.',
+  'Current password is incorrect': 'La contraseña actual es incorrecta.',
+  'Email already registered': 'El correo ya está registrado.',
+};
+function translateApiMessage(message: string) { return apiMessageTranslations[message] ?? message; }
 export function formatApiError(detail: unknown, status: number) {
-  if (typeof detail === 'string' && detail.trim()) return detail.trim();
+  if (typeof detail === 'string' && detail.trim()) return translateApiMessage(detail.trim());
   if (Array.isArray(detail)) {
     const messages = detail.map(item => {
-      if (typeof item === 'string') return item;
-      if (item && typeof item === 'object' && 'msg' in item && typeof item.msg === 'string') return item.msg;
+      if (typeof item === 'string') return translateApiMessage(item);
+      if (item && typeof item === 'object' && 'msg' in item && typeof item.msg === 'string') return translateApiMessage(item.msg);
       return '';
     }).filter(Boolean);
     if (messages.length) return messages.join(' · ');
   }
-  if (detail && typeof detail === 'object' && 'msg' in detail && typeof detail.msg === 'string') return detail.msg;
+  if (detail && typeof detail === 'object' && 'msg' in detail && typeof detail.msg === 'string') return translateApiMessage(detail.msg);
   return status ? `No se pudo completar la solicitud (${status})` : 'No se pudo conectar con TwoGether.';
 }
-export const imageUrl = (path?: string | null) => path ? (path.startsWith('http') ? path : `${API_BASE_URL}${path.startsWith('/') ? '' : '/uploads/'}${path.startsWith('/') ? path : ''}`) : undefined;
+export const imageUrl = (path?: string | null) => {
+  if (!path) return undefined;
+  if (path.startsWith('http')) return path;
+  return `${API_BASE_URL}${path.startsWith('/') ? path : `/uploads/${path}`}`;
+};
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!API_BASE_URL) throw new ApiError(0, 'No se pudo conectar con TwoGether.');
