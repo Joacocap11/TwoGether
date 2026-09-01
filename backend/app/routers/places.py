@@ -9,8 +9,13 @@ from ..uploads import save_upload
 router=APIRouter(prefix='/places',tags=['places'])
 
 def view(p, detail=False):
-    avg=sum(r.score for r in p.ratings)/len(p.ratings) if p.ratings else None
-    result={**{k:getattr(p,k) for k in ('id','name','visit_date','location','notes','image_path','created_at','updated_at')},'average_rating':avg}
+    place_average=sum(r.score for r in p.ratings)/len(p.ratings) if p.ratings else None
+    dish_average=sum(d.score for d in p.dishes)/len(p.dishes) if p.dishes else None
+    photos=[p.image_path] if p.image_path else []
+    photos.extend(d.image_path for d in p.dishes if d.image_path)
+    result={**{k:getattr(p,k) for k in ('id','name','visit_date','location','notes','image_path','created_at','updated_at')},
+            'average_rating':place_average, 'place_average_rating':place_average,
+            'dish_average_rating':dish_average, 'photos':photos}
     if detail: result.update(ratings=p.ratings, dishes=p.dishes)
     return result
 
@@ -32,7 +37,7 @@ def _save_entries(db, place, entries):
 
 @router.get('',response_model=list[PlaceOut])
 def list_places(db:Session=Depends(get_db),_=Depends(get_current_user)):
-    return [view(p) for p in db.query(PlaceVisit).filter(PlaceVisit.deleted_at.is_(None)).order_by(PlaceVisit.visit_date.desc()).all()]
+    return [view(p,True) for p in db.query(PlaceVisit).filter(PlaceVisit.deleted_at.is_(None)).order_by(PlaceVisit.visit_date.desc()).all()]
 @router.post('',response_model=PlaceOut,status_code=201)
 def create_place(data:PlaceCreate,db:Session=Depends(get_db),_=Depends(get_current_user)):
     p=PlaceVisit(**data.model_dump()); db.add(p); db.commit(); db.refresh(p); return view(p)

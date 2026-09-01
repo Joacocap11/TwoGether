@@ -56,7 +56,7 @@ class TestRecord(Base):
     __tablename__='test_records'
     id: Mapped[int]=mapped_column(primary_key=True)
     title: Mapped[str]=mapped_column(String(200))
-    result: Mapped[str]=mapped_column(Text)
+    result: Mapped[str|None]=mapped_column(Text, nullable=True)
     test_date: Mapped[date]=mapped_column(Date)
     notes: Mapped[str|None]=mapped_column(Text, nullable=True)
     image_path: Mapped[str|None]=mapped_column(String(500), nullable=True)
@@ -71,7 +71,7 @@ class TestOutcome(Base):
     id: Mapped[int]=mapped_column(primary_key=True)
     test_record_id: Mapped[int]=mapped_column(ForeignKey('test_records.id'), nullable=False)
     user_id: Mapped[int]=mapped_column(ForeignKey('users.id'), nullable=False)
-    result: Mapped[str]=mapped_column(Text, nullable=False)
+    result: Mapped[str|None]=mapped_column(Text, nullable=True)
     image_path: Mapped[str|None]=mapped_column(String(500), nullable=True)
     test_record=relationship('TestRecord', back_populates='outcomes')
     user=relationship('User', back_populates='test_outcomes')

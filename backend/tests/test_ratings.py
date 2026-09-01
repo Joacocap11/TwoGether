@@ -17,5 +17,14 @@ def test_rating_rules_and_average():
     assert client.post(f"/api/v1/places/{p['id']}/ratings",json={'score':5},headers=h).status_code==201
     selena=token('b@example.com'); h2={'Authorization':f'Bearer {selena}'}
     assert client.post(f"/api/v1/places/{p['id']}/ratings",json={'score':8},headers=h2).status_code==201
+    assert client.post('/api/v1/dishes',json={'name':'Soup','visit_id':p['id'],'user_id':1,'score':4},headers=h).status_code==201
+    assert client.post('/api/v1/dishes',json={'name':'Pasta','visit_id':p['id'],'user_id':2,'score':8},headers=h2).status_code==201
     detail=client.get(f"/api/v1/places/{p['id']}",headers=h).json()
-    assert detail['average_rating']==6.5
+    assert detail['place_average_rating']==6.5
+    assert detail['dish_average_rating']==6
+    assert len(detail['ratings'])==2 and len(detail['dishes'])==2
+    assert len(detail['photos'])==0
+    test=client.post('/api/v1/tests/complete',json={'title':'Check','test_date':'2025-01-02','outcomes':[{'user_id':1},{'user_id':2}]},headers=h)
+    assert test.status_code==201
+    assert test.json()['result'] is None
+    assert all(outcome['result'] is None for outcome in test.json()['outcomes'])

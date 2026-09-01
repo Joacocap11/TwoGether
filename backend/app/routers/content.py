@@ -39,19 +39,19 @@ def _save_outcomes(db,t,data):
     for item in data:
         outcome=db.query(TestOutcome).filter_by(test_record_id=t.id,user_id=item.user_id).first()
         if outcome is None: outcome=TestOutcome(test_record_id=t.id,user_id=item.user_id); db.add(outcome)
-        outcome.result=item.result
+        outcome.result=None
 
 @router.get('/tests',response_model=list[TestOut])
 def tests(db:Session=Depends(get_db),_=Depends(get_current_user)): return db.query(TestRecord).order_by(TestRecord.test_date.desc()).all()
 @router.post('/tests/complete',response_model=TestOut,status_code=201)
 def add_complete_test(data:TestComplete,db:Session=Depends(get_db),_=Depends(get_current_user)):
-    t=TestRecord(title=data.title,result='; '.join(o.result for o in data.outcomes),test_date=data.test_date,notes=data.notes)
+    t=TestRecord(title=data.title,result=None,test_date=data.test_date,notes=data.notes)
     db.add(t); db.flush(); _save_outcomes(db,t,data.outcomes); db.commit(); db.refresh(t); return t
 @router.put('/tests/{test_id}/complete',response_model=TestOut)
 def update_complete_test(test_id:int,data:TestComplete,db:Session=Depends(get_db),_=Depends(get_current_user)):
     t=db.get(TestRecord,test_id)
     if not t: raise HTTPException(404,'Test not found')
-    t.title=data.title; t.test_date=data.test_date; t.notes=data.notes; t.result='; '.join(o.result for o in data.outcomes)
+    t.title=data.title; t.test_date=data.test_date; t.notes=data.notes; t.result=None
     _save_outcomes(db,t,data.outcomes); db.commit(); db.refresh(t); return t
 @router.post('/tests',response_model=TestOut,status_code=201)
 def add_test(data:TestCreate,db:Session=Depends(get_db),_=Depends(get_current_user)):
