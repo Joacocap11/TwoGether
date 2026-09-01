@@ -113,3 +113,7 @@ Una visita (`PlaceVisit`) tiene muchos platos (`Dish`) y ratings (`UserRating`) 
 ## Fuera del alcance
 
 No incluye app móvil, notificaciones, mapas avanzados/geolocalización, redes sociales/chat, IA/OCR, importación/exportación masiva, gamificación, reservas, recomendaciones ni estadísticas avanzadas/ Wrapped.
+
+## Branding
+
+Los assets oficiales de TwoGether viven en `frontend/public/branding/`. El símbolo y sus derivados se sirven desde rutas públicas de Vite/Nginx; no dependen de la carpeta Descargas. La paleta principal es crema `#F7F3EA`, azul `#284B63` y amarillo `#E7B84B`.
