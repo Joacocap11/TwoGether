@@ -19,6 +19,8 @@ class User(Base):
     ratings=relationship('UserRating', back_populates='user')
     dishes=relationship('Dish', back_populates='user')
     test_outcomes=relationship('TestOutcome', back_populates='user')
+    media_ratings=relationship('MediaRating', back_populates='user')
+    hotel_ratings=relationship('HotelRating', back_populates='user')
 
 class PlaceVisit(Base):
     __tablename__='place_visits'
@@ -81,3 +83,47 @@ class TestOutcome(Base):
     image_path: Mapped[str|None]=mapped_column(String(500), nullable=True)
     test_record=relationship('TestRecord', back_populates='outcomes')
     user=relationship('User', back_populates='test_outcomes')
+
+class MediaEntry(Base):
+    __tablename__='media_entries'
+    id: Mapped[int]=mapped_column(primary_key=True)
+    title: Mapped[str]=mapped_column(String(200))
+    media_type: Mapped[str]=mapped_column(String(6))
+    watched_date: Mapped[date]=mapped_column(Date)
+    category: Mapped[str|None]=mapped_column(String(120), nullable=True)
+    image_path: Mapped[str|None]=mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime]=mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime]=mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    ratings=relationship('MediaRating', back_populates='media', cascade='all, delete-orphan')
+
+class MediaRating(Base):
+    __tablename__='media_ratings'
+    __table_args__=(UniqueConstraint('media_entry_id','user_id',name='uq_media_rating_entry_user'),)
+    id: Mapped[int]=mapped_column(primary_key=True)
+    media_entry_id: Mapped[int]=mapped_column(ForeignKey('media_entries.id'), nullable=False)
+    user_id: Mapped[int]=mapped_column(ForeignKey('users.id'), nullable=False)
+    score: Mapped[float]=mapped_column(Float)
+    media=relationship('MediaEntry', back_populates='ratings')
+    user=relationship('User', back_populates='media_ratings')
+
+class HotelVisit(Base):
+    __tablename__='hotel_visits'
+    id: Mapped[int]=mapped_column(primary_key=True)
+    name: Mapped[str]=mapped_column(String(200))
+    visit_date: Mapped[date]=mapped_column(Date)
+    location: Mapped[str|None]=mapped_column(String(300), nullable=True)
+    image_path: Mapped[str|None]=mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime]=mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime]=mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    ratings=relationship('HotelRating', back_populates='hotel', cascade='all, delete-orphan')
+
+class HotelRating(Base):
+    __tablename__='hotel_ratings'
+    __table_args__=(UniqueConstraint('hotel_visit_id','user_id',name='uq_hotel_rating_visit_user'),)
+    id: Mapped[int]=mapped_column(primary_key=True)
+    hotel_visit_id: Mapped[int]=mapped_column(ForeignKey('hotel_visits.id'), nullable=False)
+    user_id: Mapped[int]=mapped_column(ForeignKey('users.id'), nullable=False)
+    score: Mapped[float]=mapped_column(Float)
+    opinion: Mapped[str|None]=mapped_column(Text, nullable=True)
+    hotel=relationship('HotelVisit', back_populates='ratings')
+    user=relationship('User', back_populates='hotel_ratings')

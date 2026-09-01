@@ -22,5 +22,19 @@ class PlaceDetail(PlaceOut): pass
 class TestCreate(BaseModel): title:str; test_date:date; notes:str|None=None
 class TestOutcomeCreate(BaseModel): user_id:int
 class TestOutcomeOut(BaseModel): model_config=ConfigDict(from_attributes=True); id:int; test_record_id:int; user_id:int; result:str|None=None; image_path:str|None=None; user:UserSummary
+
+class MediaRatingCreate(BaseModel): user_id:int; score:float=Field(ge=1,le=10)
+class MediaRatingOut(MediaRatingCreate): model_config=ConfigDict(from_attributes=True); id:int
+class MediaCreate(BaseModel):
+    title:str; media_type:str=Field(pattern='^(series|movie)$'); watched_date:date; category:str|None=None
+    ratings:list[MediaRatingCreate]=Field(min_length=2,max_length=2)
+class MediaOut(MediaCreate):
+    model_config=ConfigDict(from_attributes=True); id:int; image_path:str|None=None; created_at:datetime|None=None; updated_at:datetime|None=None; ratings:list[MediaRatingOut]=[]; average_rating:float|None=None
+class HotelRatingCreate(BaseModel): user_id:int; score:float=Field(ge=1,le=10); opinion:str|None=None
+class HotelRatingOut(HotelRatingCreate): model_config=ConfigDict(from_attributes=True); id:int
+class HotelCreate(BaseModel):
+    name:str; visit_date:date; location:str|None=None; ratings:list[HotelRatingCreate]=Field(min_length=2,max_length=2)
+class HotelOut(HotelCreate):
+    model_config=ConfigDict(from_attributes=True); id:int; image_path:str|None=None; created_at:datetime|None=None; updated_at:datetime|None=None; ratings:list[HotelRatingOut]=[]; average_rating:float|None=None
 class TestOut(BaseModel): model_config=ConfigDict(from_attributes=True); id:int; title:str; result:str|None=None; test_date:date; notes:str|None=None; image_path:str|None=None; created_at:datetime|None=None; updated_at:datetime|None=None; outcomes:list[TestOutcomeOut]=[]
 class TestComplete(BaseModel): title:str; test_date:date; notes:str|None=None; outcomes:list[TestOutcomeCreate]=Field(min_length=2,max_length=2)

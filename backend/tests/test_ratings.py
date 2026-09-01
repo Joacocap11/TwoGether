@@ -43,3 +43,22 @@ def test_rating_rules_and_average():
     test_after=client.get('/api/v1/tests',headers=h).json()
     assert len([item for item in test_after if item['id']==test_id])==1
     assert all(outcome['result'] is None for outcome in test.json()['outcomes'])
+
+def test_media_and_hotels_crud():
+    login=client.post('/api/v1/auth/login',data={'username':'a@example.com','password':'password123'})
+    assert login.status_code==200
+    h={'Authorization':f"Bearer {login.json()['access_token']}"}
+    media=client.post('/api/v1/media',json={'title':'The Film','media_type':'movie','watched_date':'2025-02-01','category':'Terror','ratings':[{'user_id':1,'score':8},{'user_id':2,'score':9}]},headers=h)
+    assert media.status_code==201 and media.json()['average_rating']==8.5
+    media_id=media.json()['id']
+    edited=client.put(f'/api/v1/media/{media_id}',json={'title':'The Series','media_type':'series','watched_date':'2025-02-02','category':None,'ratings':[{'user_id':1,'score':7},{'user_id':2,'score':8}]},headers=h)
+    assert edited.status_code==200 and edited.json()['id']==media_id and edited.json()['media_type']=='series'
+    assert client.delete(f'/api/v1/media/{media_id}',headers=h).status_code==204
+    hotel=client.post('/api/v1/hotels',json={'name':'Hotel Central','visit_date':'2025-02-03','location':'Madrid','ratings':[{'user_id':1,'score':6,'opinion':'Bien'},{'user_id':2,'score':10,'opinion':'Excelente'}]},headers=h)
+    assert hotel.status_code==201 and hotel.json()['average_rating']==8
+    hotel_id=hotel.json()['id']
+    edited_hotel=client.put(f'/api/v1/hotels/{hotel_id}',json={'name':'Hotel Updated','visit_date':'2025-02-04','location':'Toledo','ratings':[{'user_id':1,'score':7,'opinion':'Ok'},{'user_id':2,'score':9,'opinion':'Muy bien'}]},headers=h)
+    assert edited_hotel.status_code==200 and edited_hotel.json()['id']==hotel_id
+    assert client.delete(f'/api/v1/hotels/{hotel_id}',headers=h).status_code==204
+    assert client.get('/api/v1/media',headers={}).status_code==401
+    assert client.get('/api/v1/hotels',headers={}).status_code==401
