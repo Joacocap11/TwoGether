@@ -103,6 +103,7 @@ class MediaRating(Base):
     media_entry_id: Mapped[int]=mapped_column(ForeignKey('media_entries.id'), nullable=False)
     user_id: Mapped[int]=mapped_column(ForeignKey('users.id'), nullable=False)
     score: Mapped[float]=mapped_column(Float)
+    opinion: Mapped[str|None]=mapped_column(Text, nullable=True)
     media=relationship('MediaEntry', back_populates='ratings')
     user=relationship('User', back_populates='media_ratings')
 

@@ -8,7 +8,7 @@ export type Rating={id:number;score:number;comment?:string|null;user_id:number;v
 export type TestOutcome={id:number;user_id:number;result?:string|null;image_path?:string|null};
 export type TestRecord={id:number;title:string;test_date:string;notes?:string|null;outcomes?:TestOutcome[];result?:string|null;image_path?:string|null};
 export type MediaType='series'|'movie';
-export type MediaRating={id:number;user_id:number;score:number};
+export type MediaRating={id:number;user_id:number;score:number;opinion?:string|null};
 export type MediaEntry={id:number;title:string;media_type:MediaType;watched_date:string;category?:string|null;image_path?:string|null;ratings:MediaRating[];average_rating?:number|null};
 export type HotelRating={id:number;user_id:number;score:number;opinion?:string|null};
 export type HotelVisit={id:number;name:string;visit_date:string;location?:string|null;image_path?:string|null;ratings:HotelRating[];average_rating?:number|null};
@@ -22,5 +22,4 @@ export const uploadDishImage=(id:number,file:File)=>{const body=new FormData();b
 export const createTest=(data:unknown)=>api<TestRecord>(endpoints.completeTests,{method:'POST',body:JSON.stringify(data)});
 export const updateTest=(id:number,data:unknown)=>api<TestRecord>(`/tests/${id}/complete`,{method:'PUT',body:JSON.stringify(data)});
 export const uploadTestOutcomeImage=(testId:number,outcomeId:number,file:File)=>{const body=new FormData();body.append('image',file);return api<TestRecord>(endpoints.testOutcomeUpload(testId,outcomeId),{method:'POST',body})};
-
 export const createPlaceComplete=(data:unknown)=>api<Place>(endpoints.completePlaces,{method:'POST',body:JSON.stringify(data)});

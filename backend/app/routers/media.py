@@ -26,8 +26,7 @@ def save_media_ratings(db,item,ratings):
     for data in ratings:
         rating=db.query(MediaRating).filter_by(media_entry_id=item.id,user_id=data.user_id).first()
         if rating is None: rating=MediaRating(media_entry_id=item.id,user_id=data.user_id); db.add(rating)
-        rating.score=data.score
-
+        rating.score=data.score; rating.opinion=data.opinion
 def save_hotel_ratings(db,item,ratings):
     _users(db,ratings)
     for data in ratings:

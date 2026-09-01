@@ -23,7 +23,7 @@ class TestCreate(BaseModel): title:str; test_date:date; notes:str|None=None
 class TestOutcomeCreate(BaseModel): user_id:int
 class TestOutcomeOut(BaseModel): model_config=ConfigDict(from_attributes=True); id:int; test_record_id:int; user_id:int; result:str|None=None; image_path:str|None=None; user:UserSummary
 
-class MediaRatingCreate(BaseModel): user_id:int; score:float=Field(ge=1,le=10)
+class MediaRatingCreate(BaseModel): user_id:int; score:float=Field(ge=1,le=10); opinion:str|None=None
 class MediaRatingOut(MediaRatingCreate): model_config=ConfigDict(from_attributes=True); id:int
 class MediaCreate(BaseModel):
     title:str; media_type:str=Field(pattern='^(series|movie)$'); watched_date:date; category:str|None=None

@@ -48,11 +48,13 @@ def test_media_and_hotels_crud():
     login=client.post('/api/v1/auth/login',data={'username':'a@example.com','password':'password123'})
     assert login.status_code==200
     h={'Authorization':f"Bearer {login.json()['access_token']}"}
-    media=client.post('/api/v1/media',json={'title':'The Film','media_type':'movie','watched_date':'2025-02-01','category':'Terror','ratings':[{'user_id':1,'score':8},{'user_id':2,'score':9}]},headers=h)
+    media=client.post('/api/v1/media',json={'title':'The Film','media_type':'movie','watched_date':'2025-02-01','category':'Terror','ratings':[{'user_id':1,'score':8,'opinion':'Muy buena fotografía'},{'user_id':2,'score':9,'opinion':'La volvería a ver'}]},headers=h)
     assert media.status_code==201 and media.json()['average_rating']==8.5
+    assert {r['opinion'] for r in media.json()['ratings']}=={'Muy buena fotografía','La volvería a ver'}
     media_id=media.json()['id']
-    edited=client.put(f'/api/v1/media/{media_id}',json={'title':'The Series','media_type':'series','watched_date':'2025-02-02','category':None,'ratings':[{'user_id':1,'score':7},{'user_id':2,'score':8}]},headers=h)
+    edited=client.put(f'/api/v1/media/{media_id}',json={'title':'The Series','media_type':'series','watched_date':'2025-02-02','category':None,'ratings':[{'user_id':1,'score':7,'opinion':'Actualizada'},{'user_id':2,'score':8,'opinion':None}]},headers=h)
     assert edited.status_code==200 and edited.json()['id']==media_id and edited.json()['media_type']=='series'
+    assert {r['opinion'] for r in edited.json()['ratings']}=={'Actualizada',None}
     assert client.delete(f'/api/v1/media/{media_id}',headers=h).status_code==204
     hotel=client.post('/api/v1/hotels',json={'name':'Hotel Central','visit_date':'2025-02-03','location':'Madrid','ratings':[{'user_id':1,'score':6,'opinion':'Bien'},{'user_id':2,'score':10,'opinion':'Excelente'}]},headers=h)
     assert hotel.status_code==201 and hotel.json()['average_rating']==8
