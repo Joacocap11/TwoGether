@@ -1,6 +1,7 @@
 from datetime import date, datetime
+from decimal import Decimal
 from enum import Enum
-from sqlalchemy import String, Text, Date, DateTime, ForeignKey, Float, Boolean, func, UniqueConstraint, Enum as SQLEnum
+from sqlalchemy import String, Text, Date, DateTime, ForeignKey, Float, Boolean, Numeric, func, UniqueConstraint, Enum as SQLEnum
 class PlaceCategory(str, Enum):
     LUNCH='lunch'
     SNACK='snack'
@@ -31,6 +32,7 @@ class PlaceVisit(Base):
     name: Mapped[str]=mapped_column(String(200), index=True)
     visit_date: Mapped[date]=mapped_column(Date)
     location: Mapped[str|None]=mapped_column(String(300), nullable=True)
+    currency: Mapped[str|None]=mapped_column(String(3), nullable=True)
     notes: Mapped[str|None]=mapped_column(Text, nullable=True)
     image_path: Mapped[str|None]=mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime]=mapped_column(DateTime, server_default=func.now())
@@ -54,6 +56,9 @@ class Dish(Base):
     id: Mapped[int]=mapped_column(primary_key=True)
     name: Mapped[str]=mapped_column(String(200))
     description: Mapped[str|None]=mapped_column(Text, nullable=True)
+    dish_price: Mapped[Decimal|None]=mapped_column(Numeric(12,2), nullable=True)
+    drink_price: Mapped[Decimal|None]=mapped_column(Numeric(12,2), nullable=True)
+    dessert_price: Mapped[Decimal|None]=mapped_column(Numeric(12,2), nullable=True)
     image_path: Mapped[str|None]=mapped_column(String(500), nullable=True)
     visit_id: Mapped[int]=mapped_column(ForeignKey('place_visits.id'))
     user_id: Mapped[int|None]=mapped_column(ForeignKey('users.id'), nullable=True)
@@ -106,15 +111,15 @@ class MediaRating(Base):
     user_id: Mapped[int]=mapped_column(ForeignKey('users.id'), nullable=False)
     score: Mapped[float]=mapped_column(Float)
     opinion: Mapped[str|None]=mapped_column(Text, nullable=True)
-    media=relationship('MediaEntry', back_populates='ratings')
-    user=relationship('User', back_populates='media_ratings')
-
+    media=relationship('MediaEntry', back_populates='ratings'); user=relationship('User', back_populates='media_ratings')
 class HotelVisit(Base):
     __tablename__='hotel_visits'
     id: Mapped[int]=mapped_column(primary_key=True)
     name: Mapped[str]=mapped_column(String(200))
     visit_date: Mapped[date]=mapped_column(Date)
     location: Mapped[str|None]=mapped_column(String(300), nullable=True)
+    total_price: Mapped[Decimal|None]=mapped_column(Numeric(12,2), nullable=True)
+    currency: Mapped[str|None]=mapped_column(String(3), nullable=True)
     image_path: Mapped[str|None]=mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime]=mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime]=mapped_column(DateTime, server_default=func.now(), onupdate=func.now())

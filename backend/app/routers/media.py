@@ -19,7 +19,7 @@ def media_view(item):
 
 def hotel_view(item):
     ratings=item.ratings or []
-    return {**{k:getattr(item,k) for k in ('id','name','visit_date','location','image_path','created_at','updated_at')},'ratings':ratings,'average_rating':sum(r.score for r in ratings)/len(ratings) if ratings else None}
+    return {**{k:getattr(item,k) for k in ('id','name','visit_date','location','total_price','currency','image_path','created_at','updated_at')},'ratings':ratings,'average_rating':sum(r.score for r in ratings)/len(ratings) if ratings else None}
 
 def save_media_ratings(db,item,ratings):
     _users(db,ratings)
@@ -64,7 +64,7 @@ async def upload_media(item_id:int,image:UploadFile=File(...),db:Session=Depends
 def list_hotels(db:Session=Depends(get_db),_=Depends(get_current_user)): return [hotel_view(x) for x in db.query(HotelVisit).order_by(HotelVisit.visit_date.desc()).all()]
 @router.post('/hotels',response_model=HotelOut,status_code=201)
 def create_hotel(data:HotelCreate,db:Session=Depends(get_db),_=Depends(get_current_user)):
-    item=HotelVisit(name=data.name,visit_date=data.visit_date,location=data.location); db.add(item); db.flush(); save_hotel_ratings(db,item,data.ratings); db.commit(); db.refresh(item); return hotel_view(item)
+    item=HotelVisit(name=data.name,visit_date=data.visit_date,location=data.location,total_price=data.total_price,currency=data.currency); db.add(item); db.flush(); save_hotel_ratings(db,item,data.ratings); db.commit(); db.refresh(item); return hotel_view(item)
 @router.get('/hotels/{item_id}',response_model=HotelOut)
 def get_hotel(item_id:int,db:Session=Depends(get_db),_=Depends(get_current_user)):
     item=db.get(HotelVisit,item_id)
@@ -74,7 +74,7 @@ def get_hotel(item_id:int,db:Session=Depends(get_db),_=Depends(get_current_user)
 def update_hotel(item_id:int,data:HotelCreate,db:Session=Depends(get_db),_=Depends(get_current_user)):
     item=db.get(HotelVisit,item_id)
     if not item: raise HTTPException(404,'Hotel not found')
-    item.name=data.name; item.visit_date=data.visit_date; item.location=data.location; save_hotel_ratings(db,item,data.ratings); db.commit(); db.refresh(item); return hotel_view(item)
+    item.name=data.name; item.visit_date=data.visit_date; item.location=data.location; item.total_price=data.total_price; item.currency=data.currency; save_hotel_ratings(db,item,data.ratings); db.commit(); db.refresh(item); return hotel_view(item)
 @router.delete('/hotels/{item_id}',status_code=204)
 def delete_hotel(item_id:int,db:Session=Depends(get_db),_=Depends(get_current_user)):
     item=db.get(HotelVisit,item_id)
