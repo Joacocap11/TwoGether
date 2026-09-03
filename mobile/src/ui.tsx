@@ -18,3 +18,60 @@ export function Refreshable({ children, refreshing, onRefresh }: { children: Rea
 export function DateText({ value }: { value: string }) { const date = new Date(`${value}T00:00:00`); return <Text style={styles.muted}>{Number.isNaN(date.valueOf()) ? value : date.toLocaleDateString('es-UY', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>; }
 export function formatISO(value: string) { const parts = value.trim().split(/[/-]/); if (parts.length !== 3) return value; if (parts[0].length === 4) return value; return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`; }
 export function dateDisplay(value: string) { const parts = value.split('-'); return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : value; }
+export type PersonTone = 'joaco' | 'selena';
+export function personTone(name?: string | null): PersonTone { return /joa?co|joaqu[ií]n/i.test(name ?? '') ? 'joaco' : 'selena'; }
+export function personColor(tone: PersonTone) { return tone === 'joaco' ? colors.yellow : colors.blue; }
+export function ScoreSelector({ value, onChange, tone }: { value: number; onChange?: (value: number) => void; tone: PersonTone }) {
+  const accent = personColor(tone);
+  return (
+    <View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
+        {Array.from({ length: 10 }, (_, i) => i + 1).map(n => {
+          const active = value >= n;
+          return (
+            <Pressable
+              key={n}
+              disabled={!onChange}
+              onPress={() => onChange?.(n)}
+              hitSlop={4}
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: 10,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: active ? accent : colors.paper,
+                borderWidth: 1,
+                borderColor: active ? accent : colors.border,
+              }}
+            >
+              <Text style={{ color: active ? '#fff' : colors.ink, fontWeight: '800', fontSize: 13 }}>{n}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <Text style={{ color: accent, fontWeight: '800', marginTop: 6 }}>{value}/10</Text>
+    </View>
+  );
+}
+export function PhotoPicker({ label, uri, existing, tone, onPick }: { label: string; uri?: string | null; existing?: string | null; tone?: PersonTone; onPick: () => void }) {
+  const preview = uri ?? imageUrl(existing);
+  const accent = tone ? personColor(tone) : colors.blue;
+  return (
+    <Pressable onPress={onPick} style={{ borderWidth: 1, borderColor: accent, borderRadius: 14, overflow: 'hidden', backgroundColor: colors.paper }}>
+      {preview ? (
+        <Image source={{ uri: preview }} resizeMode="cover" style={{ width: '100%', height: 140 }} />
+      ) : (
+        <View style={{ height: 140, alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <Ionicons name="camera-outline" size={26} color={accent} />
+          <Text style={{ color: accent, fontWeight: '700', textAlign: 'center' }}>{label}</Text>
+        </View>
+      )}
+      {preview ? (
+        <View style={{ padding: 8, alignItems: 'center', borderTopWidth: 1, borderTopColor: colors.border }}>
+          <Text style={{ color: accent, fontWeight: '700' }}>Cambiar foto</Text>
+        </View>
+      ) : null}
+    </Pressable>
+  );
+}
