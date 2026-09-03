@@ -18,6 +18,7 @@ venv/
 node_modules/
 dist/
 .expo/
+expo-env.d.ts
 .vite/
 
 # Runtime uploads and data
