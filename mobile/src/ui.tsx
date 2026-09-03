@@ -75,3 +75,12 @@ export function PhotoPicker({ label, uri, existing, tone, onPick }: { label: str
     </Pressable>
   );
 }
+// Joaco always first, Selena second — resolved by name, never assumed from array/user_id order.
+export function orderByTone<T>(items: T[], nameOf: (item: T) => string | undefined): T[] {
+  return [...items].sort((a, b) => {
+    const toneA = personTone(nameOf(a));
+    const toneB = personTone(nameOf(b));
+    if (toneA === toneB) return 0;
+    return toneA === 'joaco' ? -1 : 1;
+  });
+}
