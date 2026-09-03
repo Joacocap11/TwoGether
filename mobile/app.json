@@ -24,6 +24,7 @@
     },
     "android": {
       "package": "com.twogether.mobile",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/twogether-icon-adaptive.png",
         "backgroundColor": "#FFFDF8"
@@ -39,12 +40,24 @@
         }
       ],
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ],
     "extra": {
       "router": {
         "origin": false
+      },
+      "eas": {
+        "projectId": "9cc1c463-e33b-4b13-a62f-b1495ca8b0d0"
       }
-    }
+    },
+    "owner": "joacocap11"
   }
 }
