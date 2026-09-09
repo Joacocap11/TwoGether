@@ -29,7 +29,7 @@ function RestaurantCard({ item, onPress }: { item: Place; onPress: () => void })
   return (
     <Pressable onPress={onPress} style={styles.card}>
       <View style={{ flexDirection: 'row', gap: 13 }}>
-        <PhotoGallery paths={[item.image_path, ...(item.photos ?? [])]} />
+        <PhotoGallery paths={item.photos?.length ? item.photos : [item.image_path]} />
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
             <Text style={{ color: colors.ink, fontSize: 18, fontWeight: '800', flex: 1 }}>{item.name}</Text>
