@@ -1,5 +1,6 @@
 import React from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, StyleProp, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
+import { Edge, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { imageUrl } from './api';
 
@@ -83,4 +84,35 @@ export function orderByTone<T>(items: T[], nameOf: (item: T) => string | undefin
     if (toneA === toneB) return 0;
     return toneA === 'joaco' ? -1 : 1;
   });
+}
+
+// Shared keyboard-safe screen wrapper: SafeAreaView -> KeyboardAvoidingView -> ScrollView.
+// Centralizes the pattern already proven in (auth)/login and (auth)/change-password so every
+// editable form gets the same platform-correct keyboard behavior instead of one-off fixes.
+export function KeyboardAwareScreen({
+  children,
+  style,
+  contentContainerStyle,
+  keyboardVerticalOffset = 0,
+  safeAreaEdges = ['top', 'bottom'],
+}: {
+  children: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+  contentContainerStyle?: StyleProp<ViewStyle>;
+  keyboardVerticalOffset?: number;
+  safeAreaEdges?: Edge[];
+}) {
+  return (
+    <SafeAreaView style={[{ flex: 1 }, style]} edges={safeAreaEdges}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={keyboardVerticalOffset}>
+        <ScrollView
+          contentContainerStyle={contentContainerStyle}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        >
+          {children}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
 }

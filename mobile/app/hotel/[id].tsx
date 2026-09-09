@@ -10,6 +10,7 @@ import {
   DateText,
   ErrorState,
   Field,
+  KeyboardAwareScreen,
   Loading,
   Photo,
   PhotoPicker,
@@ -170,7 +171,7 @@ export default function HotelDetail() {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <KeyboardAwareScreen style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.title}>{isNew ? 'Nuevo hotel' : 'Editar hotel'}</Text>
       <Field label="Nombre" value={name} onChangeText={setName} placeholder="Nombre del hotel" />
       <Field label="Fecha de visita (AAAA-MM-DD)" value={date} onChangeText={setDate} placeholder="2026-01-31" />
@@ -201,6 +202,6 @@ export default function HotelDetail() {
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <Button title={save.isPending ? 'Guardando…' : 'Guardar hotel'} onPress={() => save.mutate()} disabled={save.isPending} />
       {!isNew ? <Button title="Cancelar" onPress={() => setEditing(false)} secondary /> : null}
-    </ScrollView>
+    </KeyboardAwareScreen>
   );
 }

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, User } from '../src/api';
 import { useAuth } from '../src/auth';
-import { Button, ErrorState, Field, Loading, styles, colors } from '../src/ui';
+import { Button, ErrorState, Field, KeyboardAwareScreen, Loading, styles, colors } from '../src/ui';
 
 const emailPattern = /^\S+@\S+\.\S+$/;
 
@@ -48,7 +48,7 @@ function AdminScreen() {
   if (query.isPending) return <Loading />;
   if (query.isError) return <ErrorState message="No se pudieron cargar los usuarios." retry={() => query.refetch()} />;
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <KeyboardAwareScreen style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.subtitle}>Crea cuentas y controla el acceso.</Text>
       {query.data?.map(item => <UserRow key={item.id} user={item} onRefresh={() => qc.invalidateQueries({ queryKey: ['users'] })} />)}
       <Text style={[styles.title, { fontSize: 21, marginTop: 16 }]}>Crear usuario</Text>
@@ -57,7 +57,7 @@ function AdminScreen() {
       <Field label="Contraseña temporal" value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" autoCorrect={false} />
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <Button title={create.isPending ? 'Creando…' : 'Crear usuario'} onPress={() => create.mutate()} disabled={create.isPending} />
-    </ScrollView>
+    </KeyboardAwareScreen>
   );
 }
 

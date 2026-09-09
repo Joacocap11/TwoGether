@@ -3,7 +3,7 @@ import { Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, imageUrl } from '../../src/api';
-import { Button, ConfirmDelete, DateText, ErrorState, Loading, Photo, styles, orderByTone, personTone, personColor } from '../../src/ui';
+import { Button, ConfirmDelete, DateText, ErrorState, KeyboardAwareScreen, Loading, Photo, styles, orderByTone, personTone, personColor } from '../../src/ui';
 import { TestForm } from '../(tabs)/tests';
 
 export default function TestDetail() {
@@ -27,11 +27,11 @@ export default function TestDetail() {
 
   if (editing) {
     return (
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <KeyboardAwareScreen style={styles.screen} contentContainerStyle={styles.content}>
         <Text style={styles.title}>{isNew ? 'Nuevo test' : 'Editar test'}</Text>
         <TestForm item={query.data} onDone={() => setEditing(false)} />
         {!isNew ? <Button title="Cancelar" onPress={() => setEditing(false)} secondary /> : null}
-      </ScrollView>
+      </KeyboardAwareScreen>
     );
   }
 

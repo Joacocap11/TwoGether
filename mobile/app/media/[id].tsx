@@ -10,6 +10,7 @@ import {
   DateText,
   ErrorState,
   Field,
+  KeyboardAwareScreen,
   Loading,
   Photo,
   PhotoPicker,
@@ -182,7 +183,7 @@ export default function MediaDetail() {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <KeyboardAwareScreen style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.title}>{isNew ? 'Nueva serie o película' : 'Editar serie o película'}</Text>
       <Field label="Título" value={title} onChangeText={setTitle} placeholder="Título" />
       <Field label="Fecha (AAAA-MM-DD)" value={date} onChangeText={setDate} placeholder="2026-01-31" />
@@ -216,6 +217,6 @@ export default function MediaDetail() {
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <Button title={save.isPending ? 'Guardando…' : 'Guardar'} onPress={() => save.mutate()} disabled={save.isPending} />
       {!isNew ? <Button title="Cancelar" onPress={() => setEditing(false)} secondary /> : null}
-    </ScrollView>
+    </KeyboardAwareScreen>
   );
 }

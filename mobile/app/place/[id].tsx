@@ -10,6 +10,7 @@ import {
   DateText,
   ErrorState,
   Field,
+  KeyboardAwareScreen,
   Loading,
   Photo,
   PhotoPicker,
@@ -245,7 +246,7 @@ export default function PlaceScreen() {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <KeyboardAwareScreen style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.title}>{isNew ? 'Nuevo restaurante' : 'Editar restaurante'}</Text>
       <Field label="Nombre" value={name} onChangeText={setName} placeholder="Nombre del restaurante" />
       <Field label="Fecha de visita" value={date} onChangeText={setDate} placeholder="DD/MM/AAAA" />
@@ -314,6 +315,6 @@ export default function PlaceScreen() {
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <Button title={save.isPending ? 'Guardando…' : 'Guardar restaurante'} onPress={() => save.mutate()} disabled={save.isPending} />
       {!isNew ? <Button title="Cancelar" onPress={() => setEditing(false)} secondary /> : null}
-    </ScrollView>
+    </KeyboardAwareScreen>
   );
 }
