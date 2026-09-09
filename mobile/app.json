@@ -2,7 +2,7 @@
   "expo": {
     "name": "TwoGether",
     "slug": "twogether",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "scheme": "twogether",
     "userInterfaceStyle": "light",
@@ -15,6 +15,12 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/9cc1c463-e33b-4b13-a62f-b1495ca8b0d0"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.twogether.mobile",
@@ -24,7 +30,7 @@
     },
     "android": {
       "package": "com.twogether.mobile",
-      "versionCode": 1,
+      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/twogether-icon-adaptive.png",
         "backgroundColor": "#FFFDF8"
