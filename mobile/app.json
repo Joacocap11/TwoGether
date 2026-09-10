@@ -2,7 +2,7 @@
   "expo": {
     "name": "TwoGether",
     "slug": "twogether",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "scheme": "twogether",
     "userInterfaceStyle": "light",
@@ -30,7 +30,7 @@
     },
     "android": {
       "package": "com.twogether.mobile",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/twogether-icon-adaptive.png",
         "backgroundColor": "#FFFDF8"

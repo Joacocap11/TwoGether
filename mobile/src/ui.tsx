@@ -1,6 +1,7 @@
 import React from 'react';
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, StyleProp, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, RefreshControl, ScrollView, StyleProp, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
 import { Edge, SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Ionicons } from '@expo/vector-icons';
 import { imageUrl } from './api';
 
@@ -86,14 +87,16 @@ export function orderByTone<T>(items: T[], nameOf: (item: T) => string | undefin
   });
 }
 
-// Shared keyboard-safe screen wrapper: SafeAreaView -> KeyboardAvoidingView -> ScrollView.
-// Centralizes the pattern already proven in (auth)/login and (auth)/change-password so every
-// editable form gets the same platform-correct keyboard behavior instead of one-off fixes.
+// Shared keyboard-safe screen wrapper backed by react-native-keyboard-controller's
+// KeyboardAwareScrollView: it measures the focused TextInput and animates the scroll
+// offset so the field clears the keyboard on both platforms (KeyboardAvoidingView +
+// ScrollView could not do this once the field sat below the fold). Requires a
+// KeyboardProvider ancestor, mounted once in app/_layout.tsx, to track native keyboard state.
 export function KeyboardAwareScreen({
   children,
   style,
   contentContainerStyle,
-  keyboardVerticalOffset = 0,
+  keyboardVerticalOffset = 16,
   safeAreaEdges = ['top', 'bottom'],
 }: {
   children: React.ReactNode;
@@ -104,15 +107,14 @@ export function KeyboardAwareScreen({
 }) {
   return (
     <SafeAreaView style={[{ flex: 1 }, style]} edges={safeAreaEdges}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={keyboardVerticalOffset}>
-        <ScrollView
-          contentContainerStyle={contentContainerStyle}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-        >
-          {children}
-        </ScrollView>
-      </KeyboardAvoidingView>
+      <KeyboardAwareScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={contentContainerStyle}
+        keyboardShouldPersistTaps="handled"
+        bottomOffset={keyboardVerticalOffset}
+      >
+        {children}
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }
