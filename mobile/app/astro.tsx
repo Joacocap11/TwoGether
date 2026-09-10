@@ -1,8 +1,18 @@
 import React, { useState } from 'react';
-import { LayoutAnimation, Platform, Pressable, ScrollView, StyleSheet, Text, UIManager, View } from 'react-native';
+import { Linking, LayoutAnimation, Platform, Pressable, ScrollView, StyleSheet, Text, UIManager, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { styles, colors } from '../src/ui';
-import { astroConnections, astroDisclaimer, astroPlacements, dynamicNarrative, dynamicSummary, AstroPlacement } from '../src/data/astrology';
+import {
+  astroBirthData,
+  astroConnections,
+  astroDisclaimer,
+  astroFullChart,
+  astroPeople,
+  astroPlacements,
+  dynamicNarrative,
+  dynamicSummary,
+  AstroPlacement,
+} from '../src/data/astrology';
 
 // LayoutAnimation is a core React Native JS API (no native module/build step
 // required); enabling it on Android is a runtime call, not a native change,
@@ -16,6 +26,18 @@ export default function Astro() {
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Carta Astral</Text>
       <Text style={styles.subtitle}>Cómo se combinan las cartas de Joaco y Selena, signo por signo.</Text>
+
+      <View style={[styles.card, local.birthCard]}>
+        <Text style={local.birthTitle}>Datos utilizados</Text>
+        {(Object.keys(astroPeople) as (keyof typeof astroPeople)[]).map(tone => (
+          <Text key={tone} style={local.birthItem}>
+            <Text style={{ fontWeight: '800', color: tone === 'joaco' ? colors.yellow : colors.blue }}>
+              {astroPeople[tone].name}
+            </Text>{' '}
+            · {astroBirthData[tone].date} · {astroBirthData[tone].time} · {astroBirthData[tone].place}
+          </Text>
+        ))}
+      </View>
 
       <AstroTable />
 
@@ -55,6 +77,18 @@ export default function Astro() {
       </View>
 
       <Text style={local.disclaimer}>{astroDisclaimer}</Text>
+
+      <View style={[styles.card, local.fullChartCard]}>
+        <Text style={local.fullChartTitle}>{astroFullChart.title}</Text>
+        <Text style={local.fullChartDesc}>{astroFullChart.description}</Text>
+        <Pressable
+          onPress={() => Linking.openURL(astroFullChart.url)}
+          accessibilityRole="button"
+          style={local.fullChartButton}
+        >
+          <Text style={local.fullChartButtonLabel}>{astroFullChart.buttonLabel}</Text>
+        </Pressable>
+      </View>
     </ScrollView>
   );
 }
@@ -96,10 +130,10 @@ function AstroAccordionItem({ placement }: { placement: AstroPlacement }) {
       accessibilityRole="button"
       accessibilityState={{ expanded: open }}
       accessibilityLabel={`${placement.label}, ${placement.subtitle}`}
-      style={[styles.card, local.accordionCard]}
+      style={[styles.card, local.accordionCard, placement.compact && local.accordionCardCompact]}
     >
       <View style={local.accordionHeader}>
-        <Text style={local.accordionHeading}>
+        <Text style={[local.accordionHeading, placement.compact && local.accordionHeadingCompact]}>
           {placement.icon} {placement.label} — {placement.subtitle}
         </Text>
         <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={colors.blue} />
@@ -115,24 +149,36 @@ function AstroAccordionItem({ placement }: { placement: AstroPlacement }) {
       {!open && <Text style={local.accordionToggleLabel}>Ver interpretación</Text>}
       {open && (
         <View style={local.accordionBody}>
-          <View style={local.accordionTraitsRow}>
+          {placement.meaning && <Text style={local.accordionMeaning}>{placement.meaning}</Text>}
+          {placement.traits.shared ? (
             <View style={local.accordionTraitCol}>
-              <Text style={[local.accordionTraitTitle, { color: colors.yellow }]}>Joaco</Text>
-              {placement.traits.joaco.map(trait => (
+              <Text style={local.accordionTraitTitle}>Rasgos compartidos</Text>
+              {placement.traits.shared.map(trait => (
                 <Text key={trait} style={local.traitItem}>
                   •  {trait}
                 </Text>
               ))}
             </View>
-            <View style={local.accordionTraitCol}>
-              <Text style={[local.accordionTraitTitle, { color: colors.blue }]}>Selena</Text>
-              {placement.traits.selena.map(trait => (
-                <Text key={trait} style={local.traitItem}>
-                  •  {trait}
-                </Text>
-              ))}
+          ) : (
+            <View style={local.accordionTraitsRow}>
+              <View style={local.accordionTraitCol}>
+                <Text style={[local.accordionTraitTitle, { color: colors.yellow }]}>Joaco</Text>
+                {(placement.traits.joaco ?? []).map(trait => (
+                  <Text key={trait} style={local.traitItem}>
+                    •  {trait}
+                  </Text>
+                ))}
+              </View>
+              <View style={local.accordionTraitCol}>
+                <Text style={[local.accordionTraitTitle, { color: colors.blue }]}>Selena</Text>
+                {(placement.traits.selena ?? []).map(trait => (
+                  <Text key={trait} style={local.traitItem}>
+                    •  {trait}
+                  </Text>
+                ))}
+              </View>
             </View>
-          </View>
+          )}
           <Text style={local.accordionDynamic}>
             <Text style={local.accordionDynamicLabel}>Dinámica: </Text>
             {placement.dynamic}
@@ -176,4 +222,15 @@ const local = StyleSheet.create({
   paragraph: { color: colors.muted, fontSize: 14, lineHeight: 21, marginBottom: 10 },
   bullet: { color: colors.muted, fontSize: 14, lineHeight: 21, marginLeft: 4, marginBottom: 4 },
   disclaimer: { color: '#9b9187', fontSize: 11, lineHeight: 16, marginTop: 8 },
+  birthCard: { backgroundColor: colors.cream, paddingVertical: 10, paddingHorizontal: 14, marginBottom: 4 },
+  birthTitle: { fontSize: 11, fontWeight: '800', color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 },
+  birthItem: { color: colors.ink, fontSize: 13, marginTop: 2 },
+  accordionCardCompact: { paddingBottom: 12 },
+  accordionHeadingCompact: { fontSize: 14 },
+  accordionMeaning: { color: colors.muted, fontSize: 13, lineHeight: 19, marginBottom: 4 },
+  fullChartCard: { alignItems: 'flex-start', gap: 4 },
+  fullChartTitle: { color: colors.ink, fontSize: 16, fontWeight: '800' },
+  fullChartDesc: { color: colors.muted, fontSize: 13, lineHeight: 19, marginBottom: 8 },
+  fullChartButton: { backgroundColor: colors.ink, paddingVertical: 10, paddingHorizontal: 18, borderRadius: 8 },
+  fullChartButtonLabel: { color: '#fff', fontWeight: '700', fontSize: 14 },
 });

@@ -25,18 +25,35 @@ export interface AstroSign {
   symbol: string;
 }
 
-export type AstroPlacementKey = 'sun' | 'moon' | 'ascendant' | 'mercury' | 'venus' | 'mars';
+export type AstroPlacementKey =
+  | 'sun'
+  | 'moon'
+  | 'ascendant'
+  | 'mercury'
+  | 'venus'
+  | 'mars'
+  | 'jupiter'
+  | 'saturn'
+  | 'uranus'
+  | 'neptune'
+  | 'pluto';
 
 export interface AstroPlacement {
   key: AstroPlacementKey;
   icon: string;
   label: string;
   subtitle: string;
+  /** Significado general del planeta; se muestra en el accordion antes de los rasgos. */
+  meaning?: string;
+  /** Los 5 planetas exteriores usan contenido más compacto para no restar foco a los 6 principales. */
+  compact?: boolean;
   joaco: AstroSign;
   selena: AstroSign;
   traits: {
-    joaco: string[];
-    selena: string[];
+    joaco?: string[];
+    selena?: string[];
+    /** Cuando Joaco y Selena comparten signo (Neptuno, Plutón), se listan rasgos en común en vez de dos columnas. */
+    shared?: string[];
   };
   dynamic: string;
 }
@@ -126,6 +143,96 @@ export const astroPlacements: AstroPlacement[] = [
     dynamic:
       'Joaco aporta fuego y espontaneidad. Selena aporta atención y precisión. Durante conflictos, las correcciones/detalles pueden tocar el orgullo de Joaco y la intensidad de Joaco puede resultarle excesiva a Selena.',
   },
+
+  {
+    key: 'jupiter',
+    icon: '♃',
+    label: 'Júpiter',
+    subtitle: 'Crecimiento y expansión',
+    meaning: 'Júpiter representa crecimiento, expansión, confianza, oportunidades y la manera en que una persona busca desarrollarse.',
+    compact: true,
+    joaco: { sign: 'Virgo', symbol: '♍' },
+    selena: { sign: 'Leo', symbol: '♌' },
+    traits: {
+      joaco: ['Crece mejorando procesos', 'Atención al detalle', 'Aprender haciendo', 'Utilidad y constancia'],
+      selena: ['Crecimiento mediante expresión', 'Creatividad', 'Confianza', 'Visibilidad', 'Generosidad'],
+    },
+    dynamic:
+      'Joaco puede aportar método y precisión; Selena puede aportar confianza, entusiasmo y expresión. Pueden complementarse entre organización y espontaneidad.',
+  },
+  {
+    key: 'saturn',
+    icon: '♄',
+    label: 'Saturno',
+    subtitle: 'Responsabilidad y aprendizajes',
+    meaning: 'Saturno representa límites, responsabilidad, estructura, disciplina y aprendizajes de largo plazo.',
+    compact: true,
+    joaco: { sign: 'Cáncer', symbol: '♋' },
+    selena: { sign: 'Géminis', symbol: '♊' },
+    traits: {
+      joaco: ['Aprendizajes ligados a la seguridad emocional', 'Protección', 'Familia', 'Vulnerabilidad'],
+      selena: ['Aprendizajes ligados a la comunicación', 'Claridad', 'Expresión de ideas', 'Organizar pensamientos'],
+    },
+    dynamic:
+      'Joaco puede poner peso emocional en determinadas situaciones; Selena puede analizarlas mentalmente. La relación funciona mejor cuando emoción y comunicación se acompañan.',
+  },
+  {
+    key: 'uranus',
+    icon: '♅',
+    label: 'Urano',
+    subtitle: 'Cambio e independencia',
+    meaning: 'Urano representa independencia, cambios inesperados, originalidad, innovación y necesidad de libertad.',
+    compact: true,
+    joaco: { sign: 'Piscis', symbol: '♓' },
+    selena: { sign: 'Acuario', symbol: '♒' },
+    traits: {
+      joaco: ['Intuición', 'Imaginación', 'Sensibilidad poco convencional', 'Cambios guiados por percepciones internas'],
+      selena: ['Independencia fuerte', 'Pensamiento diferente', 'Innovación', 'Necesidad de espacio'],
+    },
+    dynamic:
+      'Los dos pueden necesitar libertad, aunque la expresan distinto: Selena la busca desde las ideas, Joaco desde la sensibilidad e intuición.',
+  },
+  {
+    key: 'neptune',
+    icon: '♆',
+    label: 'Neptuno',
+    subtitle: 'Sensibilidad e ideales',
+    meaning: 'Neptuno representa imaginación, sensibilidad, idealismo, fantasía e intuición.',
+    compact: true,
+    joaco: { sign: 'Acuario', symbol: '♒' },
+    selena: { sign: 'Acuario', symbol: '♒' },
+    traits: {
+      shared: [
+        'Idealismo',
+        'Imaginación',
+        'Interés por posibilidades futuras',
+        'Sensibilidad a ideas colectivas',
+        'Capacidad para fantasear y proyectar juntos',
+      ],
+    },
+    dynamic:
+      'Al compartir Neptuno en Acuario, pueden coincidir bastante en ideales generacionales y en imaginar juntos proyectos, experiencias o futuros posibles. Al ser un planeta lento, esta coincidencia también es generacional y no debe leerse como algo exclusivamente personal.',
+  },
+  {
+    key: 'pluto',
+    icon: '♇',
+    label: 'Plutón',
+    subtitle: 'Transformación e intensidad',
+    meaning: 'Plutón representa transformación, intensidad, poder interno y procesos profundos de cambio.',
+    compact: true,
+    joaco: { sign: 'Sagitario', symbol: '♐' },
+    selena: { sign: 'Sagitario', symbol: '♐' },
+    traits: {
+      shared: [
+        'Búsqueda de significado',
+        'Transformación mediante experiencias',
+        'Cuestionamiento de creencias',
+        'Interés por descubrir perspectivas nuevas',
+      ],
+    },
+    dynamic:
+      'Comparten una posición generacional asociada a revisar creencias, explorar ideas y transformar la manera de entender el mundo. Plutón es un planeta lento, por lo que esta coincidencia es principalmente generacional.',
+  },
 ];
 
 export interface AstroConnection {
@@ -179,3 +286,25 @@ export const dynamicNarrative = {
 
 export const astroDisclaimer =
   'Esta es una interpretación astrológica simbólica, no una medición científica de compatibilidad. Las posiciones utilizadas fueron calculadas de forma aproximada.';
+
+export interface AstroBirthDetail {
+  date: string;
+  time: string;
+  place: string;
+}
+
+// Mostrados de forma discreta ("Datos utilizados"); no se usan para calcular nada en runtime.
+export const astroBirthData: Record<PersonTone, AstroBirthDetail> = {
+  joaco: { date: '27/06/2004', time: '22:20', place: 'Montevideo, Uruguay' },
+  selena: { date: '28/09/2002', time: '20:50', place: 'Montevideo, Uruguay' },
+};
+
+export const astroFullChart = {
+  title: '¿Querés ver la carta completa?',
+  description:
+    'Si querés profundizar en casas, grados, aspectos y otros puntos astrológicos, podés consultar una carta natal completa.',
+  buttonLabel: 'Ver carta completa',
+  // Calculadora externa de carta natal (Astro-Seek) donde cada quien ingresa sus propios
+  // datos manualmente. Sin query params con datos personales a propósito.
+  url: 'https://horoscopes.astro-seek.com/birth-chart-horoscope-online',
+};

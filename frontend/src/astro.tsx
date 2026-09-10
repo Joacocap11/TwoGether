@@ -1,5 +1,14 @@
 import React from 'react';
-import {astroConnections, astroDisclaimer, astroPlacements, dynamicNarrative, dynamicSummary} from './data/astrology';
+import {
+  astroBirthData,
+  astroConnections,
+  astroDisclaimer,
+  astroFullChart,
+  astroPeople,
+  astroPlacements,
+  dynamicNarrative,
+  dynamicSummary,
+} from './data/astrology';
 
 export function AstroPage() {
   return (
@@ -9,6 +18,18 @@ export function AstroPage() {
           <p className="eyebrow">CARTA ASTRAL</p>
           <h1>Carta Astral</h1>
           <p className="astro-subtitle">Cómo se combinan las cartas de Joaco y Selena, signo por signo.</p>
+        </div>
+      </div>
+
+      <div className="astro-birth-data">
+        <p className="astro-birth-title">Datos utilizados</p>
+        <div className="astro-birth-grid">
+          {(Object.keys(astroPeople) as (keyof typeof astroPeople)[]).map(tone => (
+            <p key={tone} className={`astro-birth-item ${tone}`}>
+              <b>{astroPeople[tone].name}</b> · {astroBirthData[tone].date} · {astroBirthData[tone].time} ·{' '}
+              {astroBirthData[tone].place}
+            </p>
+          ))}
         </div>
       </div>
 
@@ -45,7 +66,7 @@ export function AstroPage() {
 
       <div className="astro-accordion">
         {astroPlacements.map(placement => (
-          <details key={placement.key} className="astro-item">
+          <details key={placement.key} className={`astro-item${placement.compact ? ' compact' : ''}`}>
             <summary>
               <span className="astro-item-heading">
                 <span aria-hidden="true">{placement.icon}</span> {placement.label} — {placement.subtitle}
@@ -64,24 +85,38 @@ export function AstroPage() {
               </span>
             </summary>
             <div className="astro-item-body">
-              <div className="astro-item-traits">
-                <div className="astro-trait joaco">
-                  <b>Joaco</b>
-                  <ul>
-                    {placement.traits.joaco.map(trait => (
-                      <li key={trait}>{trait}</li>
-                    ))}
-                  </ul>
+              {placement.meaning && <p className="astro-item-meaning">{placement.meaning}</p>}
+              {placement.traits.shared ? (
+                <div className="astro-item-traits shared">
+                  <div className="astro-trait shared">
+                    <b>Rasgos compartidos</b>
+                    <ul>
+                      {placement.traits.shared.map(trait => (
+                        <li key={trait}>{trait}</li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
-                <div className="astro-trait selena">
-                  <b>Selena</b>
-                  <ul>
-                    {placement.traits.selena.map(trait => (
-                      <li key={trait}>{trait}</li>
-                    ))}
-                  </ul>
+              ) : (
+                <div className="astro-item-traits">
+                  <div className="astro-trait joaco">
+                    <b>Joaco</b>
+                    <ul>
+                      {(placement.traits.joaco ?? []).map(trait => (
+                        <li key={trait}>{trait}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="astro-trait selena">
+                    <b>Selena</b>
+                    <ul>
+                      {(placement.traits.selena ?? []).map(trait => (
+                        <li key={trait}>{trait}</li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
-              </div>
+              )}
               <p className="astro-dynamic">
                 <b>Dinámica:</b> {placement.dynamic}
               </p>
@@ -126,6 +161,19 @@ export function AstroPage() {
       </section>
 
       <p className="astro-disclaimer">{astroDisclaimer}</p>
+
+      <section className="astro-full-chart">
+        <h2>{astroFullChart.title}</h2>
+        <p>{astroFullChart.description}</p>
+        <a
+          className="astro-full-chart-button"
+          href={astroFullChart.url}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {astroFullChart.buttonLabel}
+        </a>
+      </section>
     </div>
   );
 }
