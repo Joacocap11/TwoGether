@@ -106,8 +106,9 @@ def test_d_e_f_refresh_rotates_and_old_token_cannot_be_reused():
     reuse = client.post('/api/v1/auth/refresh', json={'refresh_token': old_refresh})
     assert reuse.status_code == 401
 
-    # Reuse-detection side effect: the new token issued by rotation is
-    # also revoked (whole session family killed), so it must fail too.
+    # Reuse-detection side effect: the new token issued by rotation shares
+    # the same family_id as the reused token, so it is revoked too (still
+    # just this one lineage/family, not every session of the user).
     new_token_after_reuse = client.post('/api/v1/auth/refresh', json={'refresh_token': new_refresh})
     assert new_token_after_reuse.status_code == 401
 

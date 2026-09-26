@@ -149,77 +149,110 @@ def test_multisession_f_one_users_sessions_never_affect_another_users():
     assert b_refreshed_2.status_code == 200  # still untouched by A's refresh + logout
 
 
-def test_multisession_h_refreshing_an_already_logged_out_token_revokes_other_sessions_too():
+def test_multisession_g_reuse_of_rotated_web_token_scopes_to_web_family_only():
     """
-    A more severe variant of the same reuse-detection design issue as test G,
-    triggered by a perfectly ordinary sequence with NO attacker involved:
+    Reusing a refresh token that was already rotated away (revoked_reason
+    == 'rotation') is treated as potential theft, but the fix scopes the
+    cascade to that token's own family_id only -- an unrelated session for
+    the SAME user (mobile) must stay valid, and a different user entirely
+    must never be touched.
+    """
+    email = 'multisession-g@example.com'
+    web = login_web(email)
+    stolen = web['refresh_token']
+    rotated = refresh_web(stolen)
+    assert rotated.status_code == 200
 
-    1. User logs out on device 1 (web) -> device 1's refresh token is
-       revoked via /auth/logout.
-    2. Something on device 1 (a stale background timer, a double-tap, a
-       race between "logout" and a scheduled silent refresh) still fires
-       one more /auth/refresh call using that now-revoked token.
+    mobile = login_mobile(email)  # unrelated family, same user
+    other_user = login_mobile('multisession-g-other@example.com')
 
-    rotate_refresh_token() cannot distinguish "revoked because it was
-    rotated away" from "revoked because the user logged out": both just
-    have revoked_at set, so step 2 is treated as reuse/theft and revokes
-    EVERY active session for the user -- silently logging out device 2
-    (mobile) as collateral damage, even though device 2 never did
-    anything wrong and nobody stole anything.
+    # Replay the already-rotated (stale) web token -> reuse detected -> 401,
+    # and only the web family gets killed as a side effect.
+    assert refresh_web(stolen).status_code == 401
+
+    # Mobile's independent family for the SAME user survives.
+    assert refresh_mobile(mobile['refresh_token']).status_code == 200
+    # A different user is untouched.
+    assert refresh_mobile(other_user['refresh_token']).status_code == 200
+
+
+def test_multisession_h_reuse_of_logged_out_token_does_not_cascade():
+    """
+    A refresh token revoked via a normal /auth/logout (revoked_reason ==
+    'logout') is NOT treated as theft. Reusing it (e.g. a stale background
+    timer racing a manual logout) must simply fail 401, with zero side
+    effects on any other session -- unlike rotation-reuse, this must not
+    even touch its own family, let alone anyone else's.
     """
     web = login_web('multisession-h@example.com')
     mobile = login_mobile('multisession-h@example.com')
     assert logout_web(web['refresh_token']).status_code == 204
-    # Re-attempting a refresh with the now-logged-out web token is treated
-    # as reuse of a revoked token -> 401, AND cascades:
+    # Re-attempting a refresh with the now-logged-out web token just 401s.
     assert refresh_web(web['refresh_token']).status_code == 401
-    # Mobile's completely unrelated, never-misused session is now dead too.
-    assert refresh_mobile(mobile['refresh_token']).status_code == 401
+    # Mobile's completely unrelated session is untouched.
+    assert refresh_mobile(mobile['refresh_token']).status_code == 200
 
 
-
-
-def test_multisession_g_reuse_revocation_scope_is_whole_user_not_just_the_stolen_lineage():
-    """
-    Documents the CURRENT (as-implemented) scope of the reuse-detection
-    safeguard in rotate_refresh_token(): reusing an already-rotated refresh
-    token revokes EVERY active refresh token for that user_id — including
-    completely unrelated sessions/devices/logins, not just the descendants
-    of the stolen token's own lineage. This is broader than "just the
-    compromised session" and is flagged for a product decision, not changed
-    here.
-    """
-    email = 'multisession-g@example.com'
-    # Session 1 (e.g. phone A): login, then rotate once so the original
-    # token becomes "already revoked" (the stolen/stale token an attacker
-    # might replay).
+def test_multisession_i_two_mobile_logins_same_user_get_independent_families():
+    email = 'multisession-i@example.com'
     session1 = login_mobile(email)
-    stolen = session1['refresh_token']
-    rotated = refresh_mobile(stolen)
-    assert rotated.status_code == 200
-    current_child = rotated.json()['refresh_token']  # direct descendant of `stolen`
-
-    # Session 2 (e.g. phone B, or the web browser): a totally separate
-    # login for the SAME user, unrelated lineage to `stolen`.
     session2 = login_mobile(email)
+    with SessionLocal() as db:
+        import hashlib
+        h1 = hashlib.sha256(session1['refresh_token'].encode()).hexdigest()
+        h2 = hashlib.sha256(session2['refresh_token'].encode()).hexdigest()
+        row1 = db.query(RefreshToken).filter_by(token_hash=h1).first()
+        row2 = db.query(RefreshToken).filter_by(token_hash=h2).first()
+        assert row1.family_id != row2.family_id
+    assert refresh_mobile(session1['refresh_token']).status_code == 200
+    assert refresh_mobile(session2['refresh_token']).status_code == 200
 
-    # A different user must never be touched by any of this.
-    other_user = login_mobile('multisession-g-other@example.com')
 
-    # Replay the already-rotated (stale) token -> reuse detected -> 401.
-    reuse_attempt = refresh_mobile(stolen)
-    assert reuse_attempt.status_code == 401
+def test_multisession_j_reuse_in_mobile_session_1_does_not_affect_mobile_session_2():
+    email = 'multisession-j@example.com'
+    session1 = login_mobile(email)
+    session2 = login_mobile(email)
+    stolen = session1['refresh_token']
+    assert refresh_mobile(stolen).status_code == 200  # rotate session1 once
+    assert refresh_mobile(stolen).status_code == 401   # reuse -> kills session1's family only
+    assert refresh_mobile(session2['refresh_token']).status_code == 200  # untouched
 
-    # Its direct child (the "legitimate" continuation of that same lineage)
-    # is also dead, which is expected regardless of scoping policy.
-    assert refresh_mobile(current_child).status_code == 401
 
-    # As currently implemented, session2 -- a fully independent login for
-    # the SAME user, sharing no lineage with the stolen token -- is ALSO
-    # revoked. This confirms "family" == "every active session belonging to
-    # this user_id", not "the lineage descending from the compromised token".
-    assert refresh_mobile(session2['refresh_token']).status_code == 401
+def test_multisession_k_family_id_persists_across_multiple_rotations():
+    email = 'multisession-k@example.com'
+    session = login_mobile(email)
+    with SessionLocal() as db:
+        import hashlib
+        h0 = hashlib.sha256(session['refresh_token'].encode()).hexdigest()
+        original_family = db.query(RefreshToken).filter_by(token_hash=h0).first().family_id
+    token = session['refresh_token']
+    for _ in range(3):
+        r = refresh_mobile(token)
+        assert r.status_code == 200
+        token = r.json()['refresh_token']
+        with SessionLocal() as db:
+            import hashlib
+            h = hashlib.sha256(token.encode()).hexdigest()
+            row = db.query(RefreshToken).filter_by(token_hash=h).first()
+            assert row.family_id == original_family
 
-    # The other user's session is untouched: isolation across users holds
-    # even though isolation across a single user's own devices does not.
+
+def test_multisession_l_reuse_of_an_already_reuse_revoked_token_has_no_new_side_effects():
+    email = 'multisession-l@example.com'
+    stolen_family = login_mobile(email)
+    other_family = login_mobile(email)  # second, independent session for the same user
+    other_user = login_mobile('multisession-l-other@example.com')
+
+    rotated = refresh_mobile(stolen_family['refresh_token'])
+    assert rotated.status_code == 200
+    # First reuse: detected, kills stolen_family's family only.
+    assert refresh_mobile(stolen_family['refresh_token']).status_code == 401
+    # Sanity: the other same-user family and the other user are still fine
+    # right after the first reuse was handled.
+    assert refresh_mobile(other_family['refresh_token']).status_code == 200
     assert refresh_mobile(other_user['refresh_token']).status_code == 200
+
+    # Second reuse attempt of the SAME already-reuse-revoked token: still
+    # just fails, no additional/new side effects anywhere.
+    assert refresh_mobile(stolen_family['refresh_token']).status_code == 401
+    assert refresh_mobile(rotated.json()['refresh_token']).status_code == 401  # its child, same dead family
