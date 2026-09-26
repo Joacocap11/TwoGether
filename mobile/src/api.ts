@@ -3,7 +3,8 @@ import * as SecureStore from 'expo-secure-store';
 const configuredApiUrl = (process.env.EXPO_PUBLIC_API_BASE_URL ?? '').replace(/\/$/, '');
 export const API_BASE_URL = configuredApiUrl.replace(/\/api\/v1$/, '');
 const API_ROOT = configuredApiUrl.endsWith('/api/v1') ? configuredApiUrl : `${configuredApiUrl}/api/v1`;
-const TOKEN_KEY = 'twogether.access_token';
+const ACCESS_TOKEN_KEY = 'twogether.access_token';
+const REFRESH_TOKEN_KEY = 'twogether.refresh_token';
 
 export type User = { id: number; name: string; email: string; is_active: boolean; is_admin: boolean; must_change_password: boolean; created_at?: string };
 export type Rating = { id?: number; user_id: number; visit_id?: number; score: number; comment?: string | null; opinion?: string | null; user?: { id: number; name: string } };
@@ -46,16 +47,57 @@ export const imageUrl = (path?: string | null) => {
   return `${API_BASE_URL}${path.startsWith('/') ? path : `/uploads/${path}`}`;
 };
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  if (!API_BASE_URL) throw new ApiError(0, 'No se pudo conectar con TwoGether.');
-  const token = await SecureStore.getItemAsync(TOKEN_KEY);
+const AUTH_NO_INTERCEPT: Record<string, true> = { '/auth/login': true, '/auth/refresh': true };
+
+async function storeTokens(accessToken: string, refreshToken?: string | null) {
+  await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, accessToken);
+  if (refreshToken) await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
+}
+async function clearTokens() {
+  await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
+  await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+}
+
+let refreshPromise: Promise<boolean> | null = null;
+function refreshAccessToken(): Promise<boolean> {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      try {
+        const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+        if (!refreshToken) { await clearTokens(); return false; }
+        const response = await fetch(`${API_ROOT}/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+        if (!response.ok) { await clearTokens(); return false; }
+        const data: { access_token: string; refresh_token?: string } = await response.json();
+        await storeTokens(data.access_token, data.refresh_token);
+        return true;
+      } catch { await clearTokens(); return false; }
+      finally { refreshPromise = null; }
+    })();
+  }
+  return refreshPromise;
+}
+
+async function rawRequest(path: string, init: RequestInit): Promise<Response> {
+  const token = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
   const headers = new Headers(init.headers);
   if (token) headers.set('Authorization', `Bearer ${token}`);
   if (!(init.body instanceof FormData)) headers.set('Content-Type', 'application/json');
-  let response: Response;
-  try { response = await fetch(`${API_ROOT}${path}`, { ...init, headers }); }
+  try { return await fetch(`${API_ROOT}${path}`, { ...init, headers }); }
   catch { throw new ApiError(0, 'No se pudo conectar con TwoGether.'); }
-  if (response.status === 401) { await SecureStore.deleteItemAsync(TOKEN_KEY); throw new ApiError(401, 'La sesión expiró.'); }
+}
+
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  if (!API_BASE_URL) throw new ApiError(0, 'No se pudo conectar con TwoGether.');
+  let response = await rawRequest(path, init);
+  if (response.status === 401 && !AUTH_NO_INTERCEPT[path]) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) response = await rawRequest(path, init);
+    else throw new ApiError(401, 'La sesión expiró.');
+  }
   if (!response.ok) {
     let detail: unknown;
     try { detail = (await response.json()).detail; } catch { /* non-JSON response */ }
@@ -67,7 +109,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export async function login(email: string, password: string) {
   if (!API_BASE_URL) throw new ApiError(0, 'No se pudo conectar con TwoGether.');
-  const body = `username=${encodeURIComponent(email.trim())}&password=${encodeURIComponent(password)}`;
+  const body = `username=${encodeURIComponent(email.trim())}&password=${encodeURIComponent(password)}&client_id=mobile`;
   let response: Response;
   try {
     response = await fetch(`${API_ROOT}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
@@ -77,12 +119,26 @@ export async function login(email: string, password: string) {
     try { detail = (await response.json()).detail; } catch { /* non-JSON response */ }
     throw new ApiError(response.status, formatApiError(detail, response.status));
   }
-  const token: { access_token: string; must_change_password: boolean } = await response.json();
-  await SecureStore.setItemAsync(TOKEN_KEY, token.access_token);
+  const token: { access_token: string; refresh_token?: string; must_change_password: boolean } = await response.json();
+  await storeTokens(token.access_token, token.refresh_token);
   return token;
 }
-export async function logout() { await SecureStore.deleteItemAsync(TOKEN_KEY); }
-export async function storedToken() { return SecureStore.getItemAsync(TOKEN_KEY); }
+export async function logout() {
+  const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+  if (refreshToken) {
+    try {
+      await fetch(`${API_ROOT}/auth/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+    } catch { /* best-effort: clear local tokens regardless */ }
+  }
+  await clearTokens();
+}
+export async function storedToken() { return SecureStore.getItemAsync(ACCESS_TOKEN_KEY); }
+export async function storedRefreshToken() { return SecureStore.getItemAsync(REFRESH_TOKEN_KEY); }
+
 export const api = {
   me: () => request<User>('/auth/me'),
   changePassword: (data: { current_password?: string; new_password: string; confirm_password: string }) => request<User>('/auth/change-password', { method: 'POST', body: JSON.stringify(data) }),

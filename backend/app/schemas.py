@@ -13,7 +13,8 @@ class UserOut(BaseModel): model_config=ConfigDict(from_attributes=True); id:int;
 class UserSummary(BaseModel): model_config=ConfigDict(from_attributes=True); id:int; name:str
 class AdminUserCreate(UserCreate): pass
 class PasswordChange(BaseModel): current_password:str|None=None; new_password:str=Field(min_length=8); confirm_password:str=Field(min_length=8)
-class Token(BaseModel): access_token:str; token_type:str='bearer'; must_change_password:bool=False
+class Token(BaseModel): access_token:str; token_type:str='bearer'; must_change_password:bool=False; refresh_token:str|None=None
+class RefreshRequest(BaseModel): refresh_token:str|None=None
 class PlaceBase(BaseModel): name:str; visit_date:date; location:str|None=None; notes:str|None=None; category:PlaceCategory|None=None; currency:Currency|None=None
 class PlaceCreate(PlaceBase): category:PlaceCategory
 class RatingCreate(BaseModel): score:float=Field(ge=1,le=10); comment:str|None=None

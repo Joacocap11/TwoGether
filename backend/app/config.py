@@ -13,7 +13,12 @@ class Settings(BaseSettings):
     database_url_override: str|None = Field(None, validation_alias="DATABASE_URL")
     testing: bool = False
     secret_key: str = Field("change-me-in-production", validation_alias="JWT_SECRET_KEY")
-    access_token_expire_minutes: int = 60 * 24
+    access_token_expire_minutes: int = Field(30, validation_alias="JWT_ACCESS_TOKEN_EXPIRE_MINUTES")
+    refresh_token_expire_days: int = Field(30, validation_alias="JWT_REFRESH_TOKEN_EXPIRE_DAYS")
+    refresh_cookie_name: str = "twogether_refresh"
+    refresh_cookie_secure: bool = Field(False, validation_alias="REFRESH_COOKIE_SECURE")
+    refresh_cookie_samesite: str = Field("lax", validation_alias="REFRESH_COOKIE_SAMESITE")
+    refresh_cookie_domain: str | None = Field(None, validation_alias="REFRESH_COOKIE_DOMAIN")
     cors_origins: str = "http://localhost:5173"
     upload_dir: str = "uploads"
     max_upload_size: int = Field(10 * 1024 * 1024, validation_alias="UPLOAD_MAX_SIZE_BYTES")

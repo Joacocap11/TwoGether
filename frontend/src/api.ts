@@ -18,7 +18,48 @@ export function parseMoney(value:string|number|bigint|null|undefined):bigint|nul
 export function moneyToApi(value:string|number|bigint|null|undefined):string|null{const cents=parseMoney(value);if(cents==null)return null;const sign=cents<0n?'-':'',abs=cents<0n?-cents:cents;return `${sign}${abs/100n}.${(abs%100n).toString().padStart(2,'0')}`};
 export function formatMoney(value:string|number|bigint|null|undefined,currency:Currency|null|undefined):string|null{const cents=parseMoney(value);if(cents==null||!currency)return null;const sign=cents<0n?'-':'',abs=cents<0n?-cents:cents,whole=(abs/100n).toLocaleString('es-UY'),fraction=(abs%100n).toString().padStart(2,'0');return `${currency} ${sign}${whole},${fraction}`};
 function formatApiError(detail:unknown,status:number){if(Array.isArray(detail))return detail.map(x=>typeof x==='object'&&x&&'msg' in x?String(x.msg):String(x)).join(' · ');if(detail&&typeof detail==='object'&&'msg' in detail)return String(detail.msg);return typeof detail==='string'?detail:`No se pudo completar la solicitud (${status})`}
-export async function api<T>(path:string,options:RequestInit={}):Promise<T>{const token=localStorage.getItem('twogether_token');const headers=new Headers(options.headers);const login=path==='/auth/login';if(options.body&&!(options.body instanceof FormData)&&!headers.has('Content-Type')&&!login)headers.set('Content-Type','application/json');if(token)headers.set('Authorization',`Bearer ${token}`);const body=login&&typeof options.body==='string'?new URLSearchParams(Object.entries(JSON.parse(options.body)) as [string,string][]):options.body;const r=await fetch(`${API_URL}${path}`,{...options,headers,body});if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(formatApiError(d.detail,r.status))}return r.status===204?undefined as T:r.json()}
+const TOKEN_KEY='twogether_token';
+let accessToken:string|null=localStorage.getItem(TOKEN_KEY);
+export function getAccessToken(){return accessToken}
+export function setAccessToken(token:string|null){accessToken=token;if(token)localStorage.setItem(TOKEN_KEY,token);else localStorage.removeItem(TOKEN_KEY)}
+type SessionListener=()=>void;
+const sessionExpiredListeners=new Set<SessionListener>();
+export function onSessionExpired(cb:SessionListener){sessionExpiredListeners.add(cb);return()=>{sessionExpiredListeners.delete(cb)}}
+const AUTH_NO_INTERCEPT:Record<string,true>={'/auth/login':true,'/auth/refresh':true};
+async function rawRequest(path:string,options:RequestInit):Promise<Response>{
+  const headers=new Headers(options.headers);
+  const isLogin=path==='/auth/login';
+  if(options.body&&!(options.body instanceof FormData)&&!headers.has('Content-Type')&&!isLogin)headers.set('Content-Type','application/json');
+  if(accessToken)headers.set('Authorization',`Bearer ${accessToken}`);
+  const body=isLogin&&typeof options.body==='string'?new URLSearchParams(Object.entries(JSON.parse(options.body)) as [string,string][]):options.body;
+  return fetch(`${API_URL}${path}`,{...options,headers,body,credentials:'include'});
+}
+let refreshPromise:Promise<boolean>|null=null;
+function refreshAccessToken():Promise<boolean>{
+  if(!refreshPromise){
+    refreshPromise=(async()=>{
+      try{
+        const r=await rawRequest('/auth/refresh',{method:'POST',body:JSON.stringify({})});
+        if(!r.ok){setAccessToken(null);return false}
+        const data=await r.json();
+        setAccessToken(data.access_token);
+        return true;
+      }catch{setAccessToken(null);return false}
+      finally{refreshPromise=null}
+    })();
+  }
+  return refreshPromise;
+}
+export async function api<T>(path:string,options:RequestInit={}):Promise<T>{
+  let r=await rawRequest(path,options);
+  if(r.status===401&&!AUTH_NO_INTERCEPT[path]){
+    const refreshed=await refreshAccessToken();
+    if(refreshed)r=await rawRequest(path,options);
+    else{sessionExpiredListeners.forEach(cb=>cb());throw new Error('La sesión expiró.')}
+  }
+  if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(formatApiError(d.detail,r.status))}
+  return r.status===204?undefined as T:r.json();
+}
 export function imageUrl(path?:string|null){return path?(path.startsWith('http')?path:`${API_ORIGIN}/uploads/${path}`):undefined}
 export const endpoints={places:'/places',place:(id:number)=>`/places/${id}`,placeUpload:(id:number)=>`/places/${id}/upload`,ratings:(id:number)=>`/places/${id}/ratings`,dishes:'/dishes',dish:(id:number)=>`/dishes/${id}`,dishUpload:(id:number)=>`/dishes/${id}/upload`,tests:'/tests',test:(id:number)=>`/tests/${id}`,testUpload:(id:number)=>`/tests/${id}/upload`,testOutcomeUpload:(testId:number,outcomeId:number)=>`/tests/${testId}/outcomes/${outcomeId}/upload`,completePlaces:'/places/complete',completeTests:'/tests/complete',media:'/media',mediaItem:(id:number)=>`/media/${id}`,mediaUpload:(id:number)=>`/media/${id}/upload`,hotels:'/hotels',hotel:(id:number)=>`/hotels/${id}`,hotelUpload:(id:number)=>`/hotels/${id}/upload`,users:'/users',userActive:(id:number)=>`/users/${id}/active`,forcePassword:(id:number)=>`/users/${id}/force-password-change`,changePassword:'/auth/change-password'};
 export const updatePlaceComplete=(id:number,data:unknown)=>api<Place>(`/places/${id}/complete`,{method:'PUT',body:JSON.stringify(data)});
