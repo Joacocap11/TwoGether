@@ -157,6 +157,56 @@ def test_spot_o_delete():
     assert client.delete(f"/api/v1/spots/{spot['id']}",headers=hj).status_code==204
     assert client.get(f"/api/v1/spots/{spot['id']}",headers=hj).status_code==404
 
+def test_spot_p_create_with_description():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    spot=client.post('/api/v1/spots',json={'name':'Parque Rodo','description':'Parque amplio con lago y zonas verdes.','notes':'Ir un domingo de tarde.'},headers=hj).json()
+    assert spot['description']=='Parque amplio con lago y zonas verdes.' and spot['notes']=='Ir un domingo de tarde.'
+
+def test_spot_q_create_without_description():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    spot=client.post('/api/v1/spots',json={'name':'Sin Descripcion'},headers=hj).json()
+    assert spot['description'] is None
+
+def test_spot_r_create_with_valid_category():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    spot=client.post('/api/v1/spots',json={'name':'Cerro Catedral','category':'viewpoint'},headers=hj).json()
+    assert spot['category']=='viewpoint'
+
+def test_spot_s_create_with_null_category():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    spot=client.post('/api/v1/spots',json={'name':'Sin Categoria'},headers=hj).json()
+    assert spot['category'] is None
+
+def test_spot_t_create_with_invalid_category_rejected():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    assert client.post('/api/v1/spots',json={'name':'Categoria Invalida','category':'bogus'},headers=hj).status_code==422
+
+def test_spot_u_update_category():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    spot=client.post('/api/v1/spots',json={'name':'Museo Historico','category':'museum'},headers=hj).json()
+    updated=client.put(f"/api/v1/spots/{spot['id']}",json={'name':'Museo Historico','category':'cultural','status':'wishlist'},headers=hj)
+    assert updated.status_code==200 and updated.json()['category']=='cultural'
+
+def test_spot_v_category_filter():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    client.post('/api/v1/spots',json={'name':'Playa Filtrable','category':'beach'},headers=hj)
+    client.post('/api/v1/spots',json={'name':'Parque Filtrable','category':'park'},headers=hj)
+    beaches=client.get('/api/v1/spots?category=beach',headers=hj).json()
+    assert all(s['category']=='beach' for s in beaches)
+    assert 'Playa Filtrable' in {s['name'] for s in beaches}
+    assert 'Parque Filtrable' not in {s['name'] for s in beaches}
+    assert client.get('/api/v1/spots?category=bogus',headers=hj).status_code==422
+
+def test_spot_w_status_and_category_filters_combined():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    client.post('/api/v1/spots',json={'name':'Parque Visitado','category':'park','status':'visited'},headers=hj)
+    client.post('/api/v1/spots',json={'name':'Parque Deseado','category':'park'},headers=hj)
+    result=client.get('/api/v1/spots?status=visited&category=park',headers=hj).json()
+    assert all(s['status']=='visited' and s['category']=='park' for s in result)
+    assert 'Parque Visitado' in {s['name'] for s in result}
+    assert 'Parque Deseado' not in {s['name'] for s in result}
+
+
 def test_admin_user_management_and_password_flow():
     with SessionLocal() as db:
         db.query(User).filter(User.email=='a@example.com').update({'is_admin':True})

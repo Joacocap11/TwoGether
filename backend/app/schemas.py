@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
-from .models import PlaceCategory, SpotStatus
+from .models import PlaceCategory, SpotStatus, SpotCategory
 
 class Currency(str, Enum):
     UYU='UYU'
@@ -81,7 +81,7 @@ class SpotRatingOut(BaseModel):
     model_config=ConfigDict(from_attributes=True)
     id:int; spot_id:int; user_id:int; score:int; comment:str|None=None
     created_at:datetime|None=None; updated_at:datetime|None=None; user:UserSummary
-class SpotBase(BaseModel): name:str; location:str|None=None; visit_date:date|None=None; notes:str|None=None
+class SpotBase(BaseModel): name:str; location:str|None=None; description:str|None=None; category:SpotCategory|None=None; visit_date:date|None=None; notes:str|None=None
 class SpotCreate(SpotBase): status:SpotStatus=SpotStatus.WISHLIST
 class SpotUpdate(SpotBase): status:SpotStatus
 class SpotOut(SpotBase):

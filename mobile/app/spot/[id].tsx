@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, imageUrl, SpotStatus, UploadFile } from '../../src/api';
+import { api, imageUrl, SpotCategory, SpotStatus, spotCategoryLabels, UploadFile } from '../../src/api';
 import { useAuth } from '../../src/auth';
 import { pickImage } from '../../src/picker';
 import {
@@ -36,6 +36,8 @@ export default function SpotDetail() {
   const [editing, setEditing] = useState(isNew);
   const [name, setName] = useState('');
   const [location, setLocation] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState<SpotCategory | null>(null);
   const [visitDate, setVisitDate] = useState('');
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState<SpotStatus>('wishlist');
@@ -48,6 +50,8 @@ export default function SpotDetail() {
     if (!item) return;
     setName(item.name);
     setLocation(item.location ?? '');
+    setDescription(item.description ?? '');
+    setCategory(item.category ?? null);
     setVisitDate(item.visit_date ?? '');
     setNotes(item.notes ?? '');
     setStatus(item.status);
@@ -55,8 +59,7 @@ export default function SpotDetail() {
 
   const save = useMutation({
     mutationFn: async () => {
-      if (!name) throw new Error('Agregá un nombre para el lugar.');
-      const payload = { name, location: location || null, visit_date: status === 'visited' ? (visitDate || null) : null, notes: notes || null, status };
+      const payload = { name, location: location || null, description: description || null, category, visit_date: status === 'visited' ? (visitDate || null) : null, notes: notes || null, status };
       const result = isNew ? await api.createSpot(payload) : await api.updateSpot(numeric, payload);
       if (photo) await api.uploadSpot(result.id, photo);
       return result.id;
@@ -74,7 +77,7 @@ export default function SpotDetail() {
   const toggleStatus = useMutation({
     mutationFn: async () => {
       const item = detail.data!;
-      return api.updateSpot(numeric, { name: item.name, location: item.location ?? null, visit_date: item.visit_date ?? null, notes: item.notes ?? null, status: item.status === 'visited' ? 'wishlist' : 'visited' });
+      return api.updateSpot(numeric, { name: item.name, location: item.location ?? null, description: item.description ?? null, category: item.category ?? null, visit_date: item.visit_date ?? null, notes: item.notes ?? null, status: item.status === 'visited' ? 'wishlist' : 'visited' });
     },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['spots'] });
@@ -100,6 +103,7 @@ export default function SpotDetail() {
           <View style={{ flex: 1 }}>
             <Text style={styles.title}>{item.name}</Text>
             {item.location ? <Text style={styles.muted}>{item.location}</Text> : null}
+            {item.category ? <Text style={styles.muted}>{spotCategoryLabels[item.category]}</Text> : null}
             <Text style={{ color: item.status === 'visited' ? colors.green : colors.muted, fontWeight: '700', marginTop: 4 }}>
               {item.status === 'visited' ? 'Visitado' : 'Por visitar'}
             </Text>
@@ -114,6 +118,7 @@ export default function SpotDetail() {
             }}
           />
         </View>
+        {item.description ? <Text style={[styles.muted, { marginTop: 10 }]}>{item.description}</Text> : null}
         {item.notes ? <Text style={[styles.muted, { marginTop: 10 }]}>{item.notes}</Text> : null}
         {item.image_path ? (
           <Pressable onPress={() => setModalImage(item.image_path!)} style={{ alignSelf: 'center', marginTop: 16 }}>
@@ -182,7 +187,16 @@ export default function SpotDetail() {
     <KeyboardAwareScreen style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.title}>{isNew ? 'Nuevo lugar' : 'Editar lugar'}</Text>
       <Field label="Nombre" value={name} onChangeText={setName} placeholder="Nombre del lugar" />
+      <Field label="Descripción" value={description} onChangeText={setDescription} placeholder="Descripción general del lugar" multiline />
       <Field label="Ubicación" value={location} onChangeText={setLocation} />
+      <Text style={styles.label}>Categoría</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>
+        {([null, ...(Object.keys(spotCategoryLabels) as SpotCategory[])]).map(value => (
+          <Pressable key={value ?? 'none'} onPress={() => setCategory(value)} style={[styles.chip, category === value && styles.chipActive]}>
+            <Text style={[styles.chipText, category === value && styles.chipTextActive]}>{value ? spotCategoryLabels[value] : 'Sin categoría'}</Text>
+          </Pressable>
+        ))}
+      </View>
       <Field label="Notas" value={notes} onChangeText={setNotes} multiline />
       <Text style={styles.label}>Estado</Text>
       <View style={{ flexDirection: 'row', marginBottom: 12 }}>

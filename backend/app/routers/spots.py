@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from ..db import get_db
-from ..models import Spot, SpotRating, SpotStatus
+from ..models import Spot, SpotRating, SpotStatus, SpotCategory
 from ..schemas import SpotCreate, SpotUpdate, SpotOut, SpotRatingCreate, SpotRatingUpdate, SpotRatingOut
 from ..auth import get_current_user
 from ..uploads import save_upload
@@ -16,7 +16,7 @@ router=APIRouter(prefix='/spots',tags=['spots'])
 def view(s):
     visible=s.ratings if s.status==SpotStatus.VISITED else []
     average=sum(r.score for r in visible)/len(visible) if visible else None
-    return {**{k:getattr(s,k) for k in ('id','name','location','visit_date','notes','status','image_path','created_at','updated_at')},
+    return {**{k:getattr(s,k) for k in ('id','name','location','description','category','visit_date','notes','status','image_path','created_at','updated_at')},
             'ratings':visible,'average_rating':average}
 # visit_date is only meaningful once a Spot has actually been visited: it is
 # unconditionally cleared server-side whenever status is 'wishlist' (both on
@@ -29,9 +29,10 @@ def _normalize(fields):
 
 
 @router.get('',response_model=list[SpotOut])
-def list_spots(status:SpotStatus|None=None,db:Session=Depends(get_db),_=Depends(get_current_user)):
+def list_spots(status:SpotStatus|None=None,category:SpotCategory|None=None,db:Session=Depends(get_db),_=Depends(get_current_user)):
     q=db.query(Spot)
     if status is not None: q=q.filter(Spot.status==status)
+    if category is not None: q=q.filter(Spot.category==category)
     return [view(s) for s in q.order_by(Spot.created_at.desc()).all()]
 @router.post('',response_model=SpotOut,status_code=201)
 def create_spot(data:SpotCreate,db:Session=Depends(get_db),_=Depends(get_current_user)):

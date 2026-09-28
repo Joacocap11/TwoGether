@@ -2,13 +2,14 @@ import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { api, Spot, SpotStatus } from '../../src/api';
+import { api, Spot, SpotCategory, SpotStatus, spotCategoryLabels } from '../../src/api';
 import { Button, DateText, ErrorState, Loading, Photo, styles, colors } from '../../src/ui';
 
 export default function Spots() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<SpotStatus | null>(null);
-  const query = useQuery({ queryKey: ['spots', filter], queryFn: () => api.spots(filter ?? undefined) });
+  const [categoryFilter, setCategoryFilter] = useState<SpotCategory | null>(null);
+  const query = useQuery({ queryKey: ['spots', filter, categoryFilter], queryFn: () => api.spots(filter ?? undefined, categoryFilter ?? undefined) });
   const router = useRouter();
   const items = useMemo(
     () => (query.data ?? []).filter(x => `${x.name} ${x.location ?? ''}`.toLowerCase().includes(search.toLowerCase())),
@@ -42,6 +43,13 @@ export default function Spots() {
               </Pressable>
             ))}
           </View>
+          <View style={[styles.row, { marginBottom: 14, flexWrap: 'wrap' }]}>
+            {([null, ...(Object.keys(spotCategoryLabels) as SpotCategory[])]).map(value => (
+              <Pressable key={value ?? 'all-cat'} onPress={() => setCategoryFilter(value)} style={[styles.chip, categoryFilter === value && styles.chipActive]}>
+                <Text style={[styles.chipText, categoryFilter === value && styles.chipTextActive]}>{value ? spotCategoryLabels[value] : 'Toda categoría'}</Text>
+              </Pressable>
+            ))}
+          </View>
           <Button title="＋ Nuevo lugar" onPress={() => router.push('/spot/new')} />
         </>
       }
@@ -65,6 +73,8 @@ function SpotCard({ item, onPress }: { item: Spot; onPress: () => void }) {
           <Text style={{ color: item.status === 'visited' ? colors.green : colors.muted, fontWeight: '700' }}>{item.status === 'visited' ? 'Visitado' : 'Por visitar'}</Text>
         </View>
         {item.location ? <Text style={styles.muted}>{item.location}</Text> : null}
+        {item.category ? <Text style={styles.muted}>{spotCategoryLabels[item.category]}</Text> : null}
+        {item.description ? <Text style={styles.muted}>{item.description}</Text> : null}
         {item.status === 'visited' && item.visit_date ? <DateText value={item.visit_date} /> : null}
         {item.status === 'visited' ? (
           <Text style={{ color: colors.ink, fontWeight: '700', marginTop: 6 }}>

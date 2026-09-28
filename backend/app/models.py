@@ -9,6 +9,16 @@ class PlaceCategory(str, Enum):
 class SpotStatus(str, Enum):
     WISHLIST='wishlist'
     VISITED='visited'
+class SpotCategory(str, Enum):
+    PARK='park'
+    MUSEUM='museum'
+    BEACH='beach'
+    VIEWPOINT='viewpoint'
+    WALK='walk'
+    NATURE='nature'
+    CULTURAL='cultural'
+    SHOPPING='shopping'
+    OTHER='other'
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .db import Base
 
@@ -160,6 +170,8 @@ class Spot(Base):
     id: Mapped[int]=mapped_column(primary_key=True)
     name: Mapped[str]=mapped_column(String(200), index=True)
     location: Mapped[str|None]=mapped_column(String(300), nullable=True)
+    description: Mapped[str|None]=mapped_column(Text, nullable=True)
+    category: Mapped[SpotCategory|None]=mapped_column(SQLEnum(SpotCategory,native_enum=False,length=9), nullable=True)
     visit_date: Mapped[date|None]=mapped_column(Date, nullable=True)
     notes: Mapped[str|None]=mapped_column(Text, nullable=True)
     image_path: Mapped[str|None]=mapped_column(String(500), nullable=True)

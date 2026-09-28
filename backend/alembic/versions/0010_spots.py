@@ -17,6 +17,8 @@ def upgrade():
         sa.Column('id', sa.Integer(), primary_key=True),
         sa.Column('name', sa.String(200), nullable=False),
         sa.Column('location', sa.String(300)),
+        sa.Column('description', sa.Text()),
+        sa.Column('category', sa.String(9)),
         sa.Column('visit_date', sa.Date()),
         sa.Column('notes', sa.Text()),
         sa.Column('image_path', sa.String(500)),
