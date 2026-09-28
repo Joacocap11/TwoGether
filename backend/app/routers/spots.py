@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from ..db import get_db
-from ..models import Spot, SpotRating, SpotStatus, SpotCategory
+from ..models import Spot, SpotRating, SpotStatus, SpotCategory, User
 from ..schemas import SpotCreate, SpotUpdate, SpotOut, SpotRatingCreate, SpotRatingUpdate, SpotRatingOut
 from ..auth import get_current_user
 from ..uploads import save_upload
@@ -80,3 +80,19 @@ def update_own_spot_rating(spot_id:int,data:SpotRatingUpdate,db:Session=Depends(
     r=db.query(SpotRating).filter_by(spot_id=spot_id,user_id=user.id).first()
     if not r: raise HTTPException(404,'You have not rated this spot yet; use POST /spots/{spot_id}/ratings to create it')
     r.score=data.score; r.comment=data.comment; db.commit(); db.refresh(r); return r
+@router.put('/{spot_id}/ratings/{user_id}',response_model=SpotRatingOut)
+def upsert_spot_rating_for_user(spot_id:int,user_id:int,data:SpotRatingCreate,db:Session=Depends(get_db),_=Depends(get_current_user)):
+    # Authentication only gates access to the app, not which person's rating
+    # can be edited: Joaco and Selena routinely share one device/session, so
+    # any authenticated user may create or update the rating belonging to
+    # either person by their user_id. UNIQUE(spot_id,user_id) still guarantees
+    # at most one rating per person per spot; this upserts instead of erroring
+    # like POST /ratings does.
+    s=db.get(Spot,spot_id)
+    if not s: raise HTTPException(404,'Spot not found')
+    if s.status!=SpotStatus.VISITED: raise HTTPException(409,'Spot must be visited before it can be rated')
+    if not db.get(User,user_id): raise HTTPException(404,'User not found')
+    r=db.query(SpotRating).filter_by(spot_id=spot_id,user_id=user_id).first()
+    if r: r.score=data.score; r.comment=data.comment
+    else: r=SpotRating(spot_id=spot_id,user_id=user_id,score=data.score,comment=data.comment); db.add(r)
+    db.commit(); db.refresh(r); return r

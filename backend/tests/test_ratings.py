@@ -206,6 +206,119 @@ def test_spot_w_status_and_category_filters_combined():
     assert 'Parque Visitado' in {s['name'] for s in result}
     assert 'Parque Deseado' not in {s['name'] for s in result}
 
+def uid(email):
+    with SessionLocal() as db:
+        return db.query(User).filter_by(email=email).first().id
+
+def test_spot_x_a_joaco_session_edits_joaco_rating():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    token('b@example.com')
+    joaco_id=uid('a@example.com')
+    spot=client.post('/api/v1/spots',json={'name':'Rambla Sur','status':'visited'},headers=hj).json()
+    r=client.put(f"/api/v1/spots/{spot['id']}/ratings/{joaco_id}",json={'score':9,'comment':'Lindo atardecer'},headers=hj)
+    assert r.status_code==200 and r.json()['user_id']==joaco_id and r.json()['score']==9
+
+def test_spot_x_b_joaco_session_edits_selena_rating():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    selena_id=uid('b@example.com')
+    spot=client.post('/api/v1/spots',json={'name':'Termas del Dayman','status':'visited'},headers=hj).json()
+    r=client.put(f"/api/v1/spots/{spot['id']}/ratings/{selena_id}",json={'score':7,'comment':'Agua calentita'},headers=hj)
+    assert r.status_code==200 and r.json()['user_id']==selena_id and r.json()['score']==7
+
+def test_spot_x_c_selena_session_edits_joaco_rating():
+    hs={'Authorization':f'Bearer {token("b@example.com")}'}
+    joaco_id=uid('a@example.com')
+    spot=client.post('/api/v1/spots',json={'name':'Valizas','status':'visited'},headers=hs).json()
+    r=client.put(f"/api/v1/spots/{spot['id']}/ratings/{joaco_id}",json={'score':8},headers=hs)
+    assert r.status_code==200 and r.json()['user_id']==joaco_id and r.json()['score']==8
+
+def test_spot_x_d_selena_session_edits_selena_rating():
+    hs={'Authorization':f'Bearer {token("b@example.com")}'}
+    selena_id=uid('b@example.com')
+    spot=client.post('/api/v1/spots',json={'name':'Jose Ignacio','status':'visited'},headers=hs).json()
+    r=client.put(f"/api/v1/spots/{spot['id']}/ratings/{selena_id}",json={'score':10},headers=hs)
+    assert r.status_code==200 and r.json()['user_id']==selena_id and r.json()['score']==10
+
+def test_spot_x_e_upsert_never_duplicates_unique_constraint():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    joaco_id=uid('a@example.com')
+    spot=client.post('/api/v1/spots',json={'name':'Piriapolis','status':'visited'},headers=hj).json()
+    client.put(f"/api/v1/spots/{spot['id']}/ratings/{joaco_id}",json={'score':5},headers=hj)
+    client.put(f"/api/v1/spots/{spot['id']}/ratings/{joaco_id}",json={'score':6},headers=hj)
+    updated=client.put(f"/api/v1/spots/{spot['id']}/ratings/{joaco_id}",json={'score':9,'comment':'final'},headers=hj)
+    assert updated.status_code==200
+    detail=client.get(f"/api/v1/spots/{spot['id']}",headers=hj).json()
+    joaco_rows=[r for r in detail['ratings'] if r['user_id']==joaco_id]
+    assert len(joaco_rows)==1 and joaco_rows[0]['score']==9 and joaco_rows[0]['comment']=='final'
+
+def test_spot_x_f_nonexistent_user_id_rejected():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    spot=client.post('/api/v1/spots',json={'name':'Colonia Sacramento','status':'visited'},headers=hj).json()
+    assert client.put(f"/api/v1/spots/{spot['id']}/ratings/999999",json={'score':5},headers=hj).status_code==404
+
+def test_spot_x_g_create_visited_directly():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    spot=client.post('/api/v1/spots',json={'name':'Cabo Santa Maria','status':'visited','visit_date':'2026-02-10'},headers=hj).json()
+    assert spot['status']=='visited' and spot['visit_date']=='2026-02-10' and spot['ratings']==[]
+
+def test_spot_x_h_visited_direct_with_rating_only_joaco():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    joaco_id=uid('a@example.com')
+    spot=client.post('/api/v1/spots',json={'name':'Sierra de las Animas','status':'visited'},headers=hj).json()
+    client.put(f"/api/v1/spots/{spot['id']}/ratings/{joaco_id}",json={'score':9},headers=hj)
+    detail=client.get(f"/api/v1/spots/{spot['id']}",headers=hj).json()
+    assert len(detail['ratings'])==1 and detail['average_rating']==9
+
+def test_spot_x_i_visited_direct_with_both_ratings():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    joaco_id=uid('a@example.com'); selena_id=uid('b@example.com')
+    spot=client.post('/api/v1/spots',json={'name':'Laguna Garzon','status':'visited'},headers=hj).json()
+    client.put(f"/api/v1/spots/{spot['id']}/ratings/{joaco_id}",json={'score':9},headers=hj)
+    client.put(f"/api/v1/spots/{spot['id']}/ratings/{selena_id}",json={'score':7},headers=hj)
+    detail=client.get(f"/api/v1/spots/{spot['id']}",headers=hj).json()
+    assert len(detail['ratings'])==2
+
+def test_spot_x_j_average_correct():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    joaco_id=uid('a@example.com'); selena_id=uid('b@example.com')
+    spot=client.post('/api/v1/spots',json={'name':'Punta Espinillo','status':'visited'},headers=hj).json()
+    client.put(f"/api/v1/spots/{spot['id']}/ratings/{joaco_id}",json={'score':9},headers=hj)
+    client.put(f"/api/v1/spots/{spot['id']}/ratings/{selena_id}",json={'score':8},headers=hj)
+    detail=client.get(f"/api/v1/spots/{spot['id']}",headers=hj).json()
+    assert detail['average_rating']==8.5
+
+def test_spot_x_k_wishlist_hides_and_rejects_ratings():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    joaco_id=uid('a@example.com')
+    spot=client.post('/api/v1/spots',json={'name':'Chihuahua'},headers=hj).json()
+    assert spot['ratings']==[]
+    assert client.put(f"/api/v1/spots/{spot['id']}/ratings/{joaco_id}",json={'score':5},headers=hj).status_code==409
+
+def test_spot_x_l_visited_to_wishlist_keeps_ratings():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    joaco_id=uid('a@example.com')
+    spot=client.post('/api/v1/spots',json={'name':'Solis','status':'visited'},headers=hj).json()
+    client.put(f"/api/v1/spots/{spot['id']}/ratings/{joaco_id}",json={'score':9},headers=hj)
+    back=client.put(f"/api/v1/spots/{spot['id']}",json={'name':'Solis','status':'wishlist'},headers=hj).json()
+    assert back['ratings']==[] and back['average_rating'] is None
+
+def test_spot_x_m_wishlist_to_visited_restores_ratings():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    joaco_id=uid('a@example.com')
+    spot=client.post('/api/v1/spots',json={'name':'La Paloma','status':'visited'},headers=hj).json()
+    client.put(f"/api/v1/spots/{spot['id']}/ratings/{joaco_id}",json={'score':9},headers=hj)
+    client.put(f"/api/v1/spots/{spot['id']}",json={'name':'La Paloma','status':'wishlist'},headers=hj)
+    restored=client.put(f"/api/v1/spots/{spot['id']}",json={'name':'La Paloma','status':'visited','visit_date':'2026-03-01'},headers=hj).json()
+    assert len(restored['ratings'])==1 and restored['ratings'][0]['score']==9 and restored['average_rating']==9
+
+def test_spot_x_n_category_filter_still_works_backend():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    client.post('/api/v1/spots',json={'name':'Museo Filtro Backend','category':'museum'},headers=hj)
+    result=client.get('/api/v1/spots?category=museum',headers=hj).json()
+    assert all(s['category']=='museum' for s in result)
+    assert 'Museo Filtro Backend' in {s['name'] for s in result}
+
+
 
 def test_admin_user_management_and_password_flow():
     with SessionLocal() as db:

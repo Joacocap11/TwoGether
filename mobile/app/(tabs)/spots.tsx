@@ -2,14 +2,13 @@ import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { api, Spot, SpotCategory, SpotStatus, spotCategoryLabels } from '../../src/api';
+import { api, Spot, SpotStatus, spotCategoryLabels } from '../../src/api';
 import { Button, DateText, ErrorState, Loading, Photo, styles, colors } from '../../src/ui';
 
 export default function Spots() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<SpotStatus | null>(null);
-  const [categoryFilter, setCategoryFilter] = useState<SpotCategory | null>(null);
-  const query = useQuery({ queryKey: ['spots', filter, categoryFilter], queryFn: () => api.spots(filter ?? undefined, categoryFilter ?? undefined) });
+  const query = useQuery({ queryKey: ['spots', filter], queryFn: () => api.spots(filter ?? undefined) });
   const router = useRouter();
   const items = useMemo(
     () => (query.data ?? []).filter(x => `${x.name} ${x.location ?? ''}`.toLowerCase().includes(search.toLowerCase())),
@@ -40,13 +39,6 @@ export default function Spots() {
             {([null, 'wishlist', 'visited'] as (SpotStatus | null)[]).map(value => (
               <Pressable key={value ?? 'all'} onPress={() => setFilter(value)} style={[styles.chip, filter === value && styles.chipActive]}>
                 <Text style={[styles.chipText, filter === value && styles.chipTextActive]}>{value ? (value === 'visited' ? 'Visitado' : 'Por visitar') : 'Todos'}</Text>
-              </Pressable>
-            ))}
-          </View>
-          <View style={[styles.row, { marginBottom: 14, flexWrap: 'wrap' }]}>
-            {([null, ...(Object.keys(spotCategoryLabels) as SpotCategory[])]).map(value => (
-              <Pressable key={value ?? 'all-cat'} onPress={() => setCategoryFilter(value)} style={[styles.chip, categoryFilter === value && styles.chipActive]}>
-                <Text style={[styles.chipText, categoryFilter === value && styles.chipTextActive]}>{value ? spotCategoryLabels[value] : 'Toda categoría'}</Text>
               </Pressable>
             ))}
           </View>

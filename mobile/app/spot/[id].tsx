@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, imageUrl, SpotCategory, SpotStatus, spotCategoryLabels, UploadFile } from '../../src/api';
-import { useAuth } from '../../src/auth';
 import { pickImage } from '../../src/picker';
 import {
   Button,
@@ -29,9 +28,9 @@ export default function SpotDetail() {
   const numeric = Number(id);
   const router = useRouter();
   const qc = useQueryClient();
-  const { user } = useAuth();
   const users = useQuery({ queryKey: ['users'], queryFn: api.users });
   const detail = useQuery({ queryKey: ['spot', numeric], queryFn: () => api.spot(numeric), enabled: !isNew });
+  const people = useMemo(() => orderByTone(users.data ?? [], u => u.name).slice(0, 2), [users.data]);
 
   const [editing, setEditing] = useState(isNew);
   const [name, setName] = useState('');
@@ -41,6 +40,10 @@ export default function SpotDetail() {
   const [visitDate, setVisitDate] = useState('');
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState<SpotStatus>('wishlist');
+  const [joacoScore, setJoacoScore] = useState(0);
+  const [joacoComment, setJoacoComment] = useState('');
+  const [selenaScore, setSelenaScore] = useState(0);
+  const [selenaComment, setSelenaComment] = useState('');
   const [photo, setPhoto] = useState<UploadFile | null>(null);
   const [error, setError] = useState('');
   const [modalImage, setModalImage] = useState<string>();
@@ -55,13 +58,24 @@ export default function SpotDetail() {
     setVisitDate(item.visit_date ?? '');
     setNotes(item.notes ?? '');
     setStatus(item.status);
-  }, [detail.data]);
+    const joaco = people[0] ? item.ratings?.find(r => r.user_id === people[0].id) : undefined;
+    const selena = people[1] ? item.ratings?.find(r => r.user_id === people[1].id) : undefined;
+    setJoacoScore(joaco?.score ?? 0);
+    setJoacoComment(joaco?.comment ?? '');
+    setSelenaScore(selena?.score ?? 0);
+    setSelenaComment(selena?.comment ?? '');
+  }, [detail.data, people]);
 
   const save = useMutation({
     mutationFn: async () => {
+      if (!name) throw new Error('Agregá un nombre para el lugar.');
       const payload = { name, location: location || null, description: description || null, category, visit_date: status === 'visited' ? (visitDate || null) : null, notes: notes || null, status };
       const result = isNew ? await api.createSpot(payload) : await api.updateSpot(numeric, payload);
       if (photo) await api.uploadSpot(result.id, photo);
+      if (status === 'visited') {
+        if (people[0] && joacoScore) await api.upsertSpotRating(result.id, people[0].id, { score: joacoScore, comment: joacoComment || null });
+        if (people[1] && selenaScore) await api.upsertSpotRating(result.id, people[1].id, { score: selenaScore, comment: selenaComment || null });
+      }
       return result.id;
     },
     onSuccess: async savedId => {
@@ -96,7 +110,6 @@ export default function SpotDetail() {
   }
 
   if (!isNew && item && !editing) {
-    const people = orderByTone(users.data ?? [], u => u.name).slice(0, 2);
     return (
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -140,29 +153,16 @@ export default function SpotDetail() {
             {people.map(person => {
               const rating = item.ratings?.find(r => r.user_id === person.id);
               const tone = personTone(person.name);
-              const accent = personColor(tone);
-              const mine = user?.id === person.id;
-              return mine ? (
+              return (
                 <SpotRatingEditor
                   key={person.id}
                   name={person.name}
                   tone={tone}
                   spotId={numeric}
+                  personId={person.id}
                   existing={rating}
                   onSaved={() => qc.invalidateQueries({ queryKey: ['spot', numeric] })}
                 />
-              ) : (
-                <View key={person.id} style={[styles.card, { borderColor: accent, borderWidth: 1.5 }]}>
-                  <Text style={{ color: accent, fontWeight: '800', fontSize: 18, marginBottom: 8 }}>{person.name}</Text>
-                  {rating ? (
-                    <>
-                      <Text style={{ color: accent, fontWeight: '800', marginBottom: 6 }}>{rating.score}/10</Text>
-                      {rating.comment ? <Text style={styles.muted}>“{rating.comment}”</Text> : null}
-                    </>
-                  ) : (
-                    <Text style={styles.muted}>Sin puntuación todavía</Text>
-                  )}
-                </View>
               );
             })}
           </>
@@ -207,6 +207,25 @@ export default function SpotDetail() {
         ))}
       </View>
       {status === 'visited' ? <Field label="Fecha de visita (AAAA-MM-DD)" value={visitDate} onChangeText={setVisitDate} placeholder="2026-01-31" /> : null}
+      {status === 'visited' ? (
+        <>
+          <Text style={[styles.title, { fontSize: 18, marginTop: 8 }]}>Puntuaciones</Text>
+          {people[0] ? (
+            <View style={[styles.card, { borderColor: personColor('joaco'), borderWidth: 1.5, marginTop: 10 }]}>
+              <Text style={{ color: personColor('joaco'), fontWeight: '800', fontSize: 16, marginBottom: 8 }}>{people[0].name}</Text>
+              <ScoreSelector value={joacoScore} tone="joaco" onChange={setJoacoScore} />
+              <Field label="Comentario (opcional)" value={joacoComment} onChangeText={setJoacoComment} multiline />
+            </View>
+          ) : null}
+          {people[1] ? (
+            <View style={[styles.card, { borderColor: personColor('selena'), borderWidth: 1.5, marginTop: 10 }]}>
+              <Text style={{ color: personColor('selena'), fontWeight: '800', fontSize: 16, marginBottom: 8 }}>{people[1].name}</Text>
+              <ScoreSelector value={selenaScore} tone="selena" onChange={setSelenaScore} />
+              <Field label="Comentario (opcional)" value={selenaComment} onChangeText={setSelenaComment} multiline />
+            </View>
+          ) : null}
+        </>
+      ) : null}
       <Text style={styles.label}>Foto</Text>
       <PhotoPicker label="Foto del lugar" uri={photo?.uri} existing={item?.image_path} onPick={pickPhoto} />
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -220,32 +239,34 @@ function SpotRatingEditor({
   name,
   tone,
   spotId,
+  personId,
   existing,
   onSaved,
 }: {
   name: string;
   tone: 'joaco' | 'selena';
   spotId: number;
+  personId: number;
   existing?: { score: number; comment?: string | null };
   onSaved: () => void;
 }) {
   const accent = personColor(tone);
-  const [score, setScore] = useState(existing?.score ?? 8);
+  const [score, setScore] = useState(existing?.score ?? 0);
   const [comment, setComment] = useState(existing?.comment ?? '');
   const [error, setError] = useState('');
   const save = useMutation({
-    mutationFn: () => (existing ? api.updateMySpotRating(spotId, { score, comment: comment || null }) : api.rateSpot(spotId, { score, comment: comment || null })),
+    mutationFn: () => api.upsertSpotRating(spotId, personId, { score, comment: comment || null }),
     onSuccess: onSaved,
     onError: e => setError(e instanceof Error ? e.message : 'No se pudo guardar la puntuación.'),
   });
   return (
     <View style={[styles.card, { borderColor: accent, borderWidth: 1.5, marginTop: 16 }]}>
       <Text style={{ color: accent, fontWeight: '800', fontSize: 18, marginBottom: 10 }}>{name}</Text>
-      <Text style={styles.label}>Tu puntuación</Text>
+      <Text style={styles.label}>Puntuación</Text>
       <ScoreSelector value={score} tone={tone} onChange={setScore} />
       <Field label="Comentario (opcional)" value={comment} onChangeText={setComment} multiline />
       {error ? <Text style={styles.error}>{error}</Text> : null}
-      <Button title={save.isPending ? 'Guardando…' : existing ? 'Actualizar puntuación' : 'Guardar puntuación'} onPress={() => save.mutate()} disabled={save.isPending} />
+      <Button title={save.isPending ? 'Guardando…' : existing ? 'Actualizar puntuación' : 'Guardar puntuación'} onPress={() => save.mutate()} disabled={save.isPending || !score} />
     </View>
   );
 }
