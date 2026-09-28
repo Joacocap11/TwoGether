@@ -104,3 +104,18 @@
   .astro-item-traits{grid-template-columns:1fr}
   .astro-item-toggle{margin-left:0}
 }
+/* Spot form + ratings polish (scoped, does not affect Media/Hotel/Places forms) */
+.spot-form{max-width:640px}
+.spot-form .full{grid-column:1/-1}
+.select{position:relative}
+.select select{width:100%;appearance:none;-webkit-appearance:none;-moz-appearance:none;border:1px solid #d9d0c3;border-radius:4px;padding:10px 34px 10px 10px;background:#fffdf9;color:var(--ink);font:inherit;cursor:pointer;outline-color:var(--navy)}
+.select select:hover,.select select:focus-visible{border-color:var(--navy)}
+.select-icon{position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:#8b7d6b}
+.spot-ratings{gap:18px}
+.spot-ratings .person-card{display:flex;flex-direction:column;gap:8px;padding:16px}
+.spot-ratings .score{justify-content:center;margin:2px 0}
+.spot-ratings textarea{min-height:92px;width:100%}
+.spot-ratings .rating-editor{display:flex;flex-direction:column;gap:8px}
+.spot-ratings .rating-editor .primary{align-self:stretch;justify-content:center}
+@media(max-width:700px){.spot-form{max-width:100%}}
+

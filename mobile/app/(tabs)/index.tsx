@@ -30,16 +30,16 @@ function RestaurantCard({ item, onPress }: { item: Place; onPress: () => void })
     <Pressable onPress={onPress} style={styles.card}>
       <View style={{ flexDirection: 'row', gap: 13 }}>
         <PhotoGallery paths={item.photos?.length ? item.photos : [item.image_path]} />
-        <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
-            <Text style={{ color: colors.ink, fontSize: 18, fontWeight: '800', flex: 1 }}>{item.name}</Text>
-            {item.category ? (
-              <Text style={[styles.chipTextActive, { backgroundColor: colors.blue, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, overflow: 'hidden' }]}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={{ color: colors.ink, fontSize: 18, fontWeight: '800', lineHeight: 23 }} numberOfLines={2}>{item.name}</Text>
+          {item.category ? (
+            <View style={[styles.badge, { backgroundColor: colors.blue, marginTop: 6 }]}>
+              <Text style={[styles.badgeText, { color: '#fff' }]} numberOfLines={1}>
                 {placeCategoryLabels[item.category] ?? item.category}
               </Text>
-            ) : null}
-          </View>
-          {item.location ? <Text style={styles.muted}>{item.location}</Text> : null}
+            </View>
+          ) : null}
+          {item.location ? <Text style={[styles.muted, { marginTop: 4 }]} numberOfLines={1}>{item.location}</Text> : null}
           <DateText value={item.visit_date} />
           <View style={[styles.row, { marginTop: 6, gap: 12 }]}>
             <Text style={{ color: colors.ink, fontWeight: '700' }}>Plato {item.dish_average_rating != null ? `${item.dish_average_rating.toFixed(1)}/10` : '—'}</Text>

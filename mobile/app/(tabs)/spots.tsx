@@ -59,14 +59,18 @@ function SpotCard({ item, onPress }: { item: Spot; onPress: () => void }) {
   return (
     <Pressable style={[styles.card, { flexDirection: 'row', gap: 13 }]} onPress={onPress}>
       <Photo path={item.image_path} />
-      <View style={{ flex: 1 }}>
-        <View style={[styles.row, { justifyContent: 'space-between' }]}>
-          <Text style={{ color: colors.ink, fontSize: 18, fontWeight: '800' }}>{item.name}</Text>
-          <Text style={{ color: item.status === 'visited' ? colors.green : colors.muted, fontWeight: '700' }}>{item.status === 'visited' ? 'Visitado' : 'Por visitar'}</Text>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={{ color: colors.ink, fontSize: 18, fontWeight: '800', lineHeight: 23 }} numberOfLines={2}>{item.name}</Text>
+        <View style={[styles.row, { flexWrap: 'wrap', marginTop: 6, gap: 8 }]}>
+          <View style={[styles.badge, { backgroundColor: item.status === 'visited' ? '#E7F3EC' : '#F1EADC' }]}>
+            <Text style={[styles.badgeText, { color: item.status === 'visited' ? colors.green : colors.muted }]} numberOfLines={1}>
+              {item.status === 'visited' ? 'Visitado' : 'Por visitar'}
+            </Text>
+          </View>
+          {item.category ? <Text style={styles.muted} numberOfLines={1}>{spotCategoryLabels[item.category]}</Text> : null}
         </View>
-        {item.location ? <Text style={styles.muted}>{item.location}</Text> : null}
-        {item.category ? <Text style={styles.muted}>{spotCategoryLabels[item.category]}</Text> : null}
-        {item.description ? <Text style={styles.muted}>{item.description}</Text> : null}
+        {item.location ? <Text style={[styles.muted, { marginTop: 4 }]} numberOfLines={1}>{item.location}</Text> : null}
+        {item.description ? <Text style={styles.muted} numberOfLines={2}>{item.description}</Text> : null}
         {item.status === 'visited' && item.visit_date ? <DateText value={item.visit_date} /> : null}
         {item.status === 'visited' ? (
           <Text style={{ color: colors.ink, fontWeight: '700', marginTop: 6 }}>
