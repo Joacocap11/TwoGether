@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 from ..auth import get_current_user
 from ..db import get_db
-from ..models import HotelRating, HotelVisit, MediaEntry, MediaRating, User
-from ..schemas import HotelCreate, HotelOut, MediaCreate, MediaOut
+from ..models import HotelAmenity, HotelAmenityRating, HotelRating, HotelVisit, MediaEntry, MediaRating, User
+from ..schemas import HotelAmenityRatingCreate, HotelAmenityRatingOut, HotelCreate, HotelOut, MediaCreate, MediaOut
 from ..uploads import save_upload
 
 router=APIRouter(tags=['media','hotels'])
@@ -17,9 +17,18 @@ def media_view(item):
     ratings=item.ratings or []
     return {**{k:getattr(item,k) for k in ('id','title','media_type','watched_date','category','image_path','created_at','updated_at')},'ratings':ratings,'average_rating':sum(r.score for r in ratings)/len(ratings) if ratings else None}
 
+def _avg(ratings):
+    return sum(r.score for r in ratings)/len(ratings) if ratings else None
+
 def hotel_view(item):
     ratings=item.ratings or []
-    return {**{k:getattr(item,k) for k in ('id','name','visit_date','location','total_price','currency','image_path','has_pool','pool_heated','pool_rating','has_breakfast','breakfast_rating','created_at','updated_at')},'ratings':ratings,'average_rating':sum(r.score for r in ratings)/len(ratings) if ratings else None}
+    amenity_ratings=item.amenity_ratings or []
+    pool_ratings=[r for r in amenity_ratings if r.amenity==HotelAmenity.POOL] if item.has_pool else []
+    breakfast_ratings=[r for r in amenity_ratings if r.amenity==HotelAmenity.BREAKFAST] if item.has_breakfast else []
+    return {**{k:getattr(item,k) for k in ('id','name','visit_date','location','total_price','currency','image_path','has_pool','pool_heated','has_breakfast','created_at','updated_at')},
+            'ratings':ratings,'average_rating':_avg(ratings),
+            'pool_ratings':pool_ratings,'pool_average_rating':_avg(pool_ratings),
+            'breakfast_ratings':breakfast_ratings,'breakfast_average_rating':_avg(breakfast_ratings)}
 
 def save_media_ratings(db,item,ratings):
     _users(db,ratings)
@@ -64,7 +73,7 @@ async def upload_media(item_id:int,image:UploadFile=File(...),db:Session=Depends
 def list_hotels(db:Session=Depends(get_db),_=Depends(get_current_user)): return [hotel_view(x) for x in db.query(HotelVisit).order_by(HotelVisit.visit_date.desc()).all()]
 @router.post('/hotels',response_model=HotelOut,status_code=201)
 def create_hotel(data:HotelCreate,db:Session=Depends(get_db),_=Depends(get_current_user)):
-    item=HotelVisit(name=data.name,visit_date=data.visit_date,location=data.location,total_price=data.total_price,currency=data.currency,has_pool=data.has_pool,pool_heated=data.pool_heated,pool_rating=data.pool_rating,has_breakfast=data.has_breakfast,breakfast_rating=data.breakfast_rating); db.add(item); db.flush(); save_hotel_ratings(db,item,data.ratings); db.commit(); db.refresh(item); return hotel_view(item)
+    item=HotelVisit(name=data.name,visit_date=data.visit_date,location=data.location,total_price=data.total_price,currency=data.currency,has_pool=data.has_pool,pool_heated=data.pool_heated,has_breakfast=data.has_breakfast); db.add(item); db.flush(); save_hotel_ratings(db,item,data.ratings); db.commit(); db.refresh(item); return hotel_view(item)
 @router.get('/hotels/{item_id}',response_model=HotelOut)
 def get_hotel(item_id:int,db:Session=Depends(get_db),_=Depends(get_current_user)):
     item=db.get(HotelVisit,item_id)
@@ -74,7 +83,7 @@ def get_hotel(item_id:int,db:Session=Depends(get_db),_=Depends(get_current_user)
 def update_hotel(item_id:int,data:HotelCreate,db:Session=Depends(get_db),_=Depends(get_current_user)):
     item=db.get(HotelVisit,item_id)
     if not item: raise HTTPException(404,'Hotel not found')
-    item.name=data.name; item.visit_date=data.visit_date; item.location=data.location; item.total_price=data.total_price; item.currency=data.currency; item.has_pool=data.has_pool; item.pool_heated=data.pool_heated; item.pool_rating=data.pool_rating; item.has_breakfast=data.has_breakfast; item.breakfast_rating=data.breakfast_rating; save_hotel_ratings(db,item,data.ratings); db.commit(); db.refresh(item); return hotel_view(item)
+    item.name=data.name; item.visit_date=data.visit_date; item.location=data.location; item.total_price=data.total_price; item.currency=data.currency; item.has_pool=data.has_pool; item.pool_heated=data.pool_heated; item.has_breakfast=data.has_breakfast; save_hotel_ratings(db,item,data.ratings); db.commit(); db.refresh(item); return hotel_view(item)
 @router.delete('/hotels/{item_id}',status_code=204)
 def delete_hotel(item_id:int,db:Session=Depends(get_db),_=Depends(get_current_user)):
     item=db.get(HotelVisit,item_id)
@@ -85,3 +94,26 @@ async def upload_hotel(item_id:int,image:UploadFile=File(...),db:Session=Depends
     item=db.get(HotelVisit,item_id)
     if not item: raise HTTPException(404,'Hotel not found')
     item.image_path=await save_upload(image); db.commit(); db.refresh(item); return hotel_view(item)
+
+@router.get('/hotels/{hotel_id}/amenity-ratings',response_model=list[HotelAmenityRatingOut])
+def list_hotel_amenity_ratings(hotel_id:int,db:Session=Depends(get_db),_=Depends(get_current_user)):
+    item=db.get(HotelVisit,hotel_id)
+    if not item: raise HTTPException(404,'Hotel not found')
+    return [r for r in item.amenity_ratings if (r.amenity==HotelAmenity.POOL and item.has_pool) or (r.amenity==HotelAmenity.BREAKFAST and item.has_breakfast)]
+@router.put('/hotels/{hotel_id}/amenity-ratings/{amenity}/{user_id}',response_model=HotelAmenityRatingOut)
+def upsert_hotel_amenity_rating(hotel_id:int,amenity:HotelAmenity,user_id:int,data:HotelAmenityRatingCreate,db:Session=Depends(get_db),_=Depends(get_current_user)):
+    # Authentication only gates access to the app, not which person's rating
+    # can be edited: Joaco and Selena routinely share one device/session, so
+    # any authenticated user may create or update either person's amenity
+    # rating by their user_id. UNIQUE(hotel_id,user_id,amenity) still
+    # guarantees at most one rating per person per amenity per hotel; this
+    # upserts instead of erroring on a second submission.
+    item=db.get(HotelVisit,hotel_id)
+    if not item: raise HTTPException(404,'Hotel not found')
+    if amenity==HotelAmenity.POOL and not item.has_pool: raise HTTPException(409,'Hotel does not have a pool')
+    if amenity==HotelAmenity.BREAKFAST and not item.has_breakfast: raise HTTPException(409,'Hotel does not have breakfast')
+    if not db.get(User,user_id): raise HTTPException(404,'User not found')
+    r=db.query(HotelAmenityRating).filter_by(hotel_id=hotel_id,user_id=user_id,amenity=amenity).first()
+    if r: r.score=data.score
+    else: r=HotelAmenityRating(hotel_id=hotel_id,user_id=user_id,amenity=amenity,score=data.score); db.add(r)
+    db.commit(); db.refresh(r); return r

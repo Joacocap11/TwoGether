@@ -47,9 +47,11 @@ export default function HotelDetail() {
   const [modalImage, setModalImage] = useState<string>();
   const [hasPool, setHasPool] = useState(false);
   const [poolHeated, setPoolHeated] = useState(false);
-  const [poolRating, setPoolRating] = useState(0);
+  const [joacoPoolRating, setJoacoPoolRating] = useState(0);
+  const [selenaPoolRating, setSelenaPoolRating] = useState(0);
   const [hasBreakfast, setHasBreakfast] = useState(false);
-  const [breakfastRating, setBreakfastRating] = useState(0);
+  const [joacoBreakfastRating, setJoacoBreakfastRating] = useState(0);
+  const [selenaBreakfastRating, setSelenaBreakfastRating] = useState(0);
 
   useEffect(() => {
     const item = detail.data;
@@ -57,13 +59,12 @@ export default function HotelDetail() {
     setName(item.name);
     setDate(item.visit_date);
     setLocation(item.location ?? '');
-    setPrice(item.total_price == null ? '' : String(item.total_price));
-    setCurrency(item.currency ?? 'UYU');
-    setHasPool(item.has_pool);
     setPoolHeated(item.pool_heated ?? false);
-    setPoolRating(item.pool_rating ?? 0);
+    setJoacoPoolRating(item.pool_ratings.find(r => r.user_id === users.data![0]?.id)?.score ?? 0);
+    setSelenaPoolRating(item.pool_ratings.find(r => r.user_id === users.data![1]?.id)?.score ?? 0);
     setHasBreakfast(item.has_breakfast);
-    setBreakfastRating(item.breakfast_rating ?? 0);
+    setJoacoBreakfastRating(item.breakfast_ratings.find(r => r.user_id === users.data![0]?.id)?.score ?? 0);
+    setSelenaBreakfastRating(item.breakfast_ratings.find(r => r.user_id === users.data![1]?.id)?.score ?? 0);
     const ordered = orderByTone(item.ratings, r => users.data!.find(u => u.id === r.user_id)?.name);
     setEntries(
       ordered.map(rating => ({
@@ -89,8 +90,6 @@ export default function HotelDetail() {
       if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date) || entries.length !== 2) {
         throw new Error('Agrega un nombre, una fecha ISO (AAAA-MM-DD) y dos valoraciones.');
       }
-      if (hasPool && !poolRating) throw new Error('Agregá una puntuación de piscina.');
-      if (hasBreakfast && !breakfastRating) throw new Error('Agregá una puntuación de desayuno.');
       const payload = {
         name,
         visit_date: date,
@@ -99,17 +98,22 @@ export default function HotelDetail() {
         currency: price === '' ? null : currency,
         has_pool: hasPool,
         pool_heated: hasPool ? poolHeated : null,
-        pool_rating: hasPool ? poolRating : null,
         has_breakfast: hasBreakfast,
-        breakfast_rating: hasBreakfast ? breakfastRating : null,
         ratings: entries.map(entry => ({ user_id: entry.user_id, score: entry.score, opinion: entry.opinion || null })),
       };
-      // Once the hotel exists (this save or an earlier failed attempt), every retry updates
-      // the same record instead of creating a new one.
+      // Once the hotel exists, amenity ratings are upserted per person.
       const existingId = createdIdRef.current ?? (isNew ? null : numeric);
       const result = existingId ? await api.updateHotel(existingId, payload) : await api.createHotel(payload);
       createdIdRef.current = result.id;
       if (photo) await api.uploadHotel(result.id, photo);
+      if (hasPool) {
+        if (joacoPoolRating) await api.upsertHotelAmenityRating(result.id, 'pool', users.data![0].id, { score: joacoPoolRating });
+        if (selenaPoolRating) await api.upsertHotelAmenityRating(result.id, 'pool', users.data![1].id, { score: selenaPoolRating });
+      }
+      if (hasBreakfast) {
+        if (joacoBreakfastRating) await api.upsertHotelAmenityRating(result.id, 'breakfast', users.data![0].id, { score: joacoBreakfastRating });
+        if (selenaBreakfastRating) await api.upsertHotelAmenityRating(result.id, 'breakfast', users.data![1].id, { score: selenaBreakfastRating });
+      }
       return result.id;
     },
     onSuccess: async savedId => {
@@ -154,16 +158,28 @@ export default function HotelDetail() {
         <Text style={{ color: colors.blue, fontWeight: '800', fontSize: 17, marginTop: 8 }}>{formatPrice(item.total_price, item.currency)}</Text>
         {(item.has_pool || item.has_breakfast) ? (
           <View style={{ marginTop: 8 }}>
-            {item.has_pool ? (
-              <Text style={styles.muted}>
-                Piscina{item.pool_heated ? ' · Climatizada' : ''}{item.pool_rating != null ? ` · ${item.pool_rating}/10` : ''}
-              </Text>
-            ) : null}
-            {item.has_breakfast ? (
-              <Text style={styles.muted}>
-                Desayuno{item.breakfast_rating != null ? ` · ${item.breakfast_rating}/10` : ''}
-              </Text>
-            ) : null}
+            {item.has_pool ? <Text style={styles.muted}>Piscina{item.pool_heated ? ' · Climatizada' : ''}{item.pool_average_rating != null ? ` · Promedio ${item.pool_average_rating.toFixed(1)}/10` : ' · Sin puntuaciones todavía'}</Text> : null}
+            {item.has_breakfast ? <Text style={styles.muted}>Desayuno{item.breakfast_average_rating != null ? ` · Promedio ${item.breakfast_average_rating.toFixed(1)}/10` : ' · Sin puntuaciones todavía'}</Text> : null}
+          </View>
+        ) : null}
+        {item.has_pool ? (
+          <View style={{ marginTop: 10 }}>
+            <Text style={styles.label}>Piscina · puntuaciones</Text>
+            {item.pool_ratings.length ? item.pool_ratings.map(r => {
+              const name = users.data?.find(u => u.id === r.user_id)?.name ?? `Usuario ${r.user_id}`;
+              const accent = personColor(personTone(name));
+              return <Text key={r.user_id} style={{ color: accent, fontWeight: '700' }}>{name}: {r.score}/10</Text>;
+            }) : <Text style={styles.muted}>Sin puntuaciones todavía</Text>}
+          </View>
+        ) : null}
+        {item.has_breakfast ? (
+          <View style={{ marginTop: 10 }}>
+            <Text style={styles.label}>Desayuno · puntuaciones</Text>
+            {item.breakfast_ratings.length ? item.breakfast_ratings.map(r => {
+              const name = users.data?.find(u => u.id === r.user_id)?.name ?? `Usuario ${r.user_id}`;
+              const accent = personColor(personTone(name));
+              return <Text key={r.user_id} style={{ color: accent, fontWeight: '700' }}>{name}: {r.score}/10</Text>;
+            }) : <Text style={styles.muted}>Sin puntuaciones todavía</Text>}
           </View>
         ) : null}
         {item.image_path ? (
@@ -227,8 +243,11 @@ export default function HotelDetail() {
           <Pressable onPress={() => setPoolHeated(!poolHeated)} style={[styles.chip, poolHeated && styles.chipActive, { marginBottom: 10 }]}>
             <Text style={[styles.chipText, poolHeated && styles.chipTextActive]}>{poolHeated ? '✓ Piscina climatizada' : 'Piscina climatizada'}</Text>
           </Pressable>
-          <Text style={styles.label}>Puntuación piscina</Text>
-          <ScoreSelector value={poolRating} tone="joaco" onChange={setPoolRating} />
+          <Text style={styles.label}>Puntuación piscina · Joaco</Text>
+          <ScoreSelector value={joacoPoolRating} tone="joaco" onChange={setJoacoPoolRating} />
+          <Text style={styles.label}>Puntuación piscina · Selena</Text>
+          <ScoreSelector value={selenaPoolRating} tone="selena" onChange={setSelenaPoolRating} />
+          <Text style={styles.muted}>Promedio piscina: {[joacoPoolRating, selenaPoolRating].filter(Boolean).length ? `${([joacoPoolRating, selenaPoolRating].filter(Boolean) as number[]).reduce((a, b) => a + b, 0) / [joacoPoolRating, selenaPoolRating].filter(Boolean).length}/10` : 'Sin puntuaciones todavía'}</Text>
         </>
       ) : null}
       <Pressable onPress={() => setHasBreakfast(!hasBreakfast)} style={[styles.chip, hasBreakfast && styles.chipActive, { marginTop: 14, marginBottom: 10 }]}>
@@ -236,8 +255,11 @@ export default function HotelDetail() {
       </Pressable>
       {hasBreakfast ? (
         <>
-          <Text style={styles.label}>Puntuación desayuno</Text>
-          <ScoreSelector value={breakfastRating} tone="joaco" onChange={setBreakfastRating} />
+          <Text style={styles.label}>Puntuación desayuno · Joaco</Text>
+          <ScoreSelector value={joacoBreakfastRating} tone="joaco" onChange={setJoacoBreakfastRating} />
+          <Text style={styles.label}>Puntuación desayuno · Selena</Text>
+          <ScoreSelector value={selenaBreakfastRating} tone="selena" onChange={setSelenaBreakfastRating} />
+          <Text style={styles.muted}>Promedio desayuno: {[joacoBreakfastRating, selenaBreakfastRating].filter(Boolean).length ? `${([joacoBreakfastRating, selenaBreakfastRating].filter(Boolean) as number[]).reduce((a, b) => a + b, 0) / [joacoBreakfastRating, selenaBreakfastRating].filter(Boolean).length}/10` : 'Sin puntuaciones todavía'}</Text>
         </>
       ) : null}
       {entries.map((entry, index) => {

@@ -74,91 +74,151 @@ def test_media_and_hotels_crud():
 def _hotel_ratings():
     return [{'user_id':1,'score':7,'opinion':None},{'user_id':2,'score':8,'opinion':None}]
 
-def test_hotel_amenity_a_no_pool_no_breakfast():
+def test_hotel_amenity_a_joaco_rates_pool():
     hj={'Authorization':f'Bearer {token("a@example.com")}'}
-    r=client.post('/api/v1/hotels',json={'name':'Hotel Sin Amenities','visit_date':'2025-03-01','ratings':_hotel_ratings()},headers=hj)
-    assert r.status_code==201
-    d=r.json()
-    assert d['has_pool'] is False and d['pool_heated'] is None and d['pool_rating'] is None
-    assert d['has_breakfast'] is False and d['breakfast_rating'] is None
+    joaco_id=uid('a@example.com')
+    hotel=client.post('/api/v1/hotels',json={'name':'Hotel Piscina A','visit_date':'2025-03-01','has_pool':True,'ratings':_hotel_ratings()},headers=hj).json()
+    r=client.put(f"/api/v1/hotels/{hotel['id']}/amenity-ratings/pool/{joaco_id}",json={'score':9},headers=hj)
+    assert r.status_code==200 and r.json()['user_id']==joaco_id and r.json()['score']==9
 
-def test_hotel_amenity_b_pool_not_heated_with_rating():
+def test_hotel_amenity_b_selena_rates_pool():
     hj={'Authorization':f'Bearer {token("a@example.com")}'}
-    r=client.post('/api/v1/hotels',json={'name':'Hotel Piscina Fria','visit_date':'2025-03-02','has_pool':True,'pool_heated':False,'pool_rating':6,'ratings':_hotel_ratings()},headers=hj)
-    assert r.status_code==201
-    d=r.json()
-    assert d['has_pool'] is True and d['pool_heated'] is False and d['pool_rating']==6
+    selena_id=uid('b@example.com')
+    hotel=client.post('/api/v1/hotels',json={'name':'Hotel Piscina B','visit_date':'2025-03-02','has_pool':True,'ratings':_hotel_ratings()},headers=hj).json()
+    r=client.put(f"/api/v1/hotels/{hotel['id']}/amenity-ratings/pool/{selena_id}",json={'score':7},headers=hj)
+    assert r.status_code==200 and r.json()['user_id']==selena_id and r.json()['score']==7
 
-def test_hotel_amenity_c_pool_heated_with_rating():
+def test_hotel_amenity_c_pool_average_correct():
     hj={'Authorization':f'Bearer {token("a@example.com")}'}
-    r=client.post('/api/v1/hotels',json={'name':'Hotel Piscina Climatizada','visit_date':'2025-03-03','has_pool':True,'pool_heated':True,'pool_rating':9,'ratings':_hotel_ratings()},headers=hj)
-    assert r.status_code==201
-    d=r.json()
-    assert d['has_pool'] is True and d['pool_heated'] is True and d['pool_rating']==9
+    joaco_id=uid('a@example.com'); selena_id=uid('b@example.com')
+    hotel=client.post('/api/v1/hotels',json={'name':'Hotel Piscina C','visit_date':'2025-03-03','has_pool':True,'ratings':_hotel_ratings()},headers=hj).json()
+    client.put(f"/api/v1/hotels/{hotel['id']}/amenity-ratings/pool/{joaco_id}",json={'score':9},headers=hj)
+    client.put(f"/api/v1/hotels/{hotel['id']}/amenity-ratings/pool/{selena_id}",json={'score':7},headers=hj)
+    detail=client.get(f"/api/v1/hotels/{hotel['id']}",headers=hj).json()
+    assert detail['pool_average_rating']==8.0
+    assert {r['score'] for r in detail['pool_ratings']}=={9,7}
 
-def test_hotel_amenity_d_breakfast_with_rating():
+def test_hotel_amenity_d_joaco_rates_breakfast():
     hj={'Authorization':f'Bearer {token("a@example.com")}'}
-    r=client.post('/api/v1/hotels',json={'name':'Hotel Desayuno','visit_date':'2025-03-04','has_breakfast':True,'breakfast_rating':8,'ratings':_hotel_ratings()},headers=hj)
-    assert r.status_code==201
-    d=r.json()
-    assert d['has_breakfast'] is True and d['breakfast_rating']==8
+    joaco_id=uid('a@example.com')
+    hotel=client.post('/api/v1/hotels',json={'name':'Hotel Desayuno D','visit_date':'2025-03-04','has_breakfast':True,'ratings':_hotel_ratings()},headers=hj).json()
+    r=client.put(f"/api/v1/hotels/{hotel['id']}/amenity-ratings/breakfast/{joaco_id}",json={'score':8},headers=hj)
+    assert r.status_code==200 and r.json()['score']==8
 
-def test_hotel_amenity_e_pool_and_breakfast_together():
+def test_hotel_amenity_e_selena_rates_breakfast():
     hj={'Authorization':f'Bearer {token("a@example.com")}'}
-    r=client.post('/api/v1/hotels',json={'name':'Hotel Completo','visit_date':'2025-03-05','has_pool':True,'pool_heated':True,'pool_rating':10,'has_breakfast':True,'breakfast_rating':7,'ratings':_hotel_ratings()},headers=hj)
-    assert r.status_code==201
-    d=r.json()
-    assert d['pool_rating']==10 and d['breakfast_rating']==7
+    selena_id=uid('b@example.com')
+    hotel=client.post('/api/v1/hotels',json={'name':'Hotel Desayuno E','visit_date':'2025-03-05','has_breakfast':True,'ratings':_hotel_ratings()},headers=hj).json()
+    r=client.put(f"/api/v1/hotels/{hotel['id']}/amenity-ratings/breakfast/{selena_id}",json={'score':9},headers=hj)
+    assert r.status_code==200 and r.json()['score']==9
 
-def test_hotel_amenity_f_pool_rating_below_range_rejected():
+def test_hotel_amenity_f_breakfast_average_correct():
     hj={'Authorization':f'Bearer {token("a@example.com")}'}
-    r=client.post('/api/v1/hotels',json={'name':'Hotel Invalido','visit_date':'2025-03-06','has_pool':True,'pool_rating':0,'ratings':_hotel_ratings()},headers=hj)
-    assert r.status_code==422
+    joaco_id=uid('a@example.com'); selena_id=uid('b@example.com')
+    hotel=client.post('/api/v1/hotels',json={'name':'Hotel Desayuno F','visit_date':'2025-03-06','has_breakfast':True,'ratings':_hotel_ratings()},headers=hj).json()
+    client.put(f"/api/v1/hotels/{hotel['id']}/amenity-ratings/breakfast/{joaco_id}",json={'score':8},headers=hj)
+    client.put(f"/api/v1/hotels/{hotel['id']}/amenity-ratings/breakfast/{selena_id}",json={'score':9},headers=hj)
+    detail=client.get(f"/api/v1/hotels/{hotel['id']}",headers=hj).json()
+    assert detail['breakfast_average_rating']==8.5
 
-def test_hotel_amenity_g_pool_rating_above_range_rejected():
+def test_hotel_amenity_g_single_rating_average_equals_that_score():
     hj={'Authorization':f'Bearer {token("a@example.com")}'}
-    r=client.post('/api/v1/hotels',json={'name':'Hotel Invalido','visit_date':'2025-03-07','has_pool':True,'pool_rating':11,'ratings':_hotel_ratings()},headers=hj)
-    assert r.status_code==422
+    joaco_id=uid('a@example.com')
+    hotel=client.post('/api/v1/hotels',json={'name':'Hotel Solo Rating','visit_date':'2025-03-07','has_pool':True,'ratings':_hotel_ratings()},headers=hj).json()
+    client.put(f"/api/v1/hotels/{hotel['id']}/amenity-ratings/pool/{joaco_id}",json={'score':6},headers=hj)
+    detail=client.get(f"/api/v1/hotels/{hotel['id']}",headers=hj).json()
+    assert detail['pool_average_rating']==6 and len(detail['pool_ratings'])==1
 
-def test_hotel_amenity_h_breakfast_rating_below_range_rejected():
+def test_hotel_amenity_h_joaco_session_edits_selena_rating():
     hj={'Authorization':f'Bearer {token("a@example.com")}'}
-    r=client.post('/api/v1/hotels',json={'name':'Hotel Invalido','visit_date':'2025-03-08','has_breakfast':True,'breakfast_rating':0,'ratings':_hotel_ratings()},headers=hj)
-    assert r.status_code==422
+    selena_id=uid('b@example.com')
+    hotel=client.post('/api/v1/hotels',json={'name':'Hotel Cross H','visit_date':'2025-03-08','has_pool':True,'ratings':_hotel_ratings()},headers=hj).json()
+    r=client.put(f"/api/v1/hotels/{hotel['id']}/amenity-ratings/pool/{selena_id}",json={'score':10},headers=hj)
+    assert r.status_code==200 and r.json()['user_id']==selena_id
 
-def test_hotel_amenity_i_breakfast_rating_above_range_rejected():
-    hj={'Authorization':f'Bearer {token("a@example.com")}'}
-    r=client.post('/api/v1/hotels',json={'name':'Hotel Invalido','visit_date':'2025-03-09','has_breakfast':True,'breakfast_rating':11,'ratings':_hotel_ratings()},headers=hj)
-    assert r.status_code==422
+def test_hotel_amenity_i_selena_session_edits_joaco_rating():
+    hs={'Authorization':f'Bearer {token("b@example.com")}'}
+    joaco_id=uid('a@example.com')
+    hotel=client.post('/api/v1/hotels',json={'name':'Hotel Cross I','visit_date':'2025-03-09','has_pool':True,'ratings':_hotel_ratings()},headers=hs).json()
+    r=client.put(f"/api/v1/hotels/{hotel['id']}/amenity-ratings/pool/{joaco_id}",json={'score':5},headers=hs)
+    assert r.status_code==200 and r.json()['user_id']==joaco_id
 
-def test_hotel_amenity_j_has_pool_false_clears_dependent_fields():
+def test_hotel_amenity_j_unique_hotel_user_amenity_upserts_no_duplicate():
     hj={'Authorization':f'Bearer {token("a@example.com")}'}
-    r=client.post('/api/v1/hotels',json={'name':'Hotel Piscina Ignorada','visit_date':'2025-03-10','has_pool':False,'pool_heated':True,'pool_rating':9,'ratings':_hotel_ratings()},headers=hj)
-    assert r.status_code==201
-    d=r.json()
-    assert d['has_pool'] is False and d['pool_heated'] is None and d['pool_rating'] is None
-
-def test_hotel_amenity_k_has_breakfast_false_clears_rating():
-    hj={'Authorization':f'Bearer {token("a@example.com")}'}
-    r=client.post('/api/v1/hotels',json={'name':'Hotel Desayuno Ignorado','visit_date':'2025-03-11','has_breakfast':False,'breakfast_rating':9,'ratings':_hotel_ratings()},headers=hj)
-    assert r.status_code==201
-    d=r.json()
-    assert d['has_breakfast'] is False and d['breakfast_rating'] is None
-
-def test_hotel_amenity_l_update_true_to_false_clears_fields():
-    hj={'Authorization':f'Bearer {token("a@example.com")}'}
-    created=client.post('/api/v1/hotels',json={'name':'Hotel Toggle','visit_date':'2025-03-12','has_pool':True,'pool_heated':True,'pool_rating':8,'has_breakfast':True,'breakfast_rating':6,'ratings':_hotel_ratings()},headers=hj).json()
-    updated=client.put(f"/api/v1/hotels/{created['id']}",json={'name':'Hotel Toggle','visit_date':'2025-03-12','has_pool':False,'has_breakfast':False,'ratings':_hotel_ratings()},headers=hj)
+    joaco_id=uid('a@example.com')
+    hotel=client.post('/api/v1/hotels',json={'name':'Hotel Unique J','visit_date':'2025-03-10','has_pool':True,'ratings':_hotel_ratings()},headers=hj).json()
+    client.put(f"/api/v1/hotels/{hotel['id']}/amenity-ratings/pool/{joaco_id}",json={'score':4},headers=hj)
+    client.put(f"/api/v1/hotels/{hotel['id']}/amenity-ratings/pool/{joaco_id}",json={'score':5},headers=hj)
+    updated=client.put(f"/api/v1/hotels/{hotel['id']}/amenity-ratings/pool/{joaco_id}",json={'score':6},headers=hj)
     assert updated.status_code==200
-    d=updated.json()
-    assert d['has_pool'] is False and d['pool_heated'] is None and d['pool_rating'] is None
-    assert d['has_breakfast'] is False and d['breakfast_rating'] is None
+    detail=client.get(f"/api/v1/hotels/{hotel['id']}",headers=hj).json()
+    joaco_rows=[r for r in detail['pool_ratings'] if r['user_id']==joaco_id]
+    assert len(joaco_rows)==1 and joaco_rows[0]['score']==6
 
-def test_hotel_amenity_m_historical_hotel_without_amenity_fields_serializes():
+def test_hotel_amenity_k_score_below_range_rejected():
     hj={'Authorization':f'Bearer {token("a@example.com")}'}
-    r=client.post('/api/v1/hotels',json={'name':'Hotel Historico','visit_date':'2025-03-13','location':'Colonia','total_price':'1200.00','currency':'UYU','ratings':_hotel_ratings()},headers=hj)
+    joaco_id=uid('a@example.com')
+    hotel=client.post('/api/v1/hotels',json={'name':'Hotel Invalido K','visit_date':'2025-03-11','has_pool':True,'ratings':_hotel_ratings()},headers=hj).json()
+    assert client.put(f"/api/v1/hotels/{hotel['id']}/amenity-ratings/pool/{joaco_id}",json={'score':0},headers=hj).status_code==422
+
+def test_hotel_amenity_l_score_above_range_rejected():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    joaco_id=uid('a@example.com')
+    hotel=client.post('/api/v1/hotels',json={'name':'Hotel Invalido L','visit_date':'2025-03-12','has_pool':True,'ratings':_hotel_ratings()},headers=hj).json()
+    assert client.put(f"/api/v1/hotels/{hotel['id']}/amenity-ratings/pool/{joaco_id}",json={'score':11},headers=hj).status_code==422
+
+def test_hotel_amenity_m_nonexistent_user_rejected():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    hotel=client.post('/api/v1/hotels',json={'name':'Hotel Invalido M','visit_date':'2025-03-13','has_pool':True,'ratings':_hotel_ratings()},headers=hj).json()
+    assert client.put(f"/api/v1/hotels/{hotel['id']}/amenity-ratings/pool/999999",json={'score':5},headers=hj).status_code==404
+
+def test_hotel_amenity_n_pool_rating_rejected_if_no_pool():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    joaco_id=uid('a@example.com')
+    hotel=client.post('/api/v1/hotels',json={'name':'Hotel Sin Piscina N','visit_date':'2025-03-14','ratings':_hotel_ratings()},headers=hj).json()
+    assert client.put(f"/api/v1/hotels/{hotel['id']}/amenity-ratings/pool/{joaco_id}",json={'score':7},headers=hj).status_code==409
+
+def test_hotel_amenity_o_breakfast_rating_rejected_if_no_breakfast():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    joaco_id=uid('a@example.com')
+    hotel=client.post('/api/v1/hotels',json={'name':'Hotel Sin Desayuno O','visit_date':'2025-03-15','ratings':_hotel_ratings()},headers=hj).json()
+    assert client.put(f"/api/v1/hotels/{hotel['id']}/amenity-ratings/breakfast/{joaco_id}",json={'score':7},headers=hj).status_code==409
+
+def test_hotel_amenity_p_disable_pool_keeps_ratings_hidden():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    joaco_id=uid('a@example.com')
+    hotel=client.post('/api/v1/hotels',json={'name':'Hotel Toggle P','visit_date':'2025-03-16','has_pool':True,'ratings':_hotel_ratings()},headers=hj).json()
+    client.put(f"/api/v1/hotels/{hotel['id']}/amenity-ratings/pool/{joaco_id}",json={'score':9},headers=hj)
+    updated=client.put(f"/api/v1/hotels/{hotel['id']}",json={'name':'Hotel Toggle P','visit_date':'2025-03-16','has_pool':False,'ratings':_hotel_ratings()},headers=hj).json()
+    assert updated['pool_ratings']==[] and updated['pool_average_rating'] is None
+
+def test_hotel_amenity_q_reenable_pool_restores_ratings():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    joaco_id=uid('a@example.com')
+    hotel=client.post('/api/v1/hotels',json={'name':'Hotel Toggle Q','visit_date':'2025-03-17','has_pool':True,'ratings':_hotel_ratings()},headers=hj).json()
+    client.put(f"/api/v1/hotels/{hotel['id']}/amenity-ratings/pool/{joaco_id}",json={'score':9},headers=hj)
+    client.put(f"/api/v1/hotels/{hotel['id']}",json={'name':'Hotel Toggle Q','visit_date':'2025-03-17','has_pool':False,'ratings':_hotel_ratings()},headers=hj)
+    restored=client.put(f"/api/v1/hotels/{hotel['id']}",json={'name':'Hotel Toggle Q','visit_date':'2025-03-17','has_pool':True,'ratings':_hotel_ratings()},headers=hj).json()
+    assert restored['pool_average_rating']==9 and len(restored['pool_ratings'])==1
+
+def test_hotel_amenity_r_breakfast_disable_enable_cycle():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    joaco_id=uid('a@example.com')
+    hotel=client.post('/api/v1/hotels',json={'name':'Hotel Toggle R','visit_date':'2025-03-18','has_breakfast':True,'ratings':_hotel_ratings()},headers=hj).json()
+    client.put(f"/api/v1/hotels/{hotel['id']}/amenity-ratings/breakfast/{joaco_id}",json={'score':7},headers=hj)
+    off=client.put(f"/api/v1/hotels/{hotel['id']}",json={'name':'Hotel Toggle R','visit_date':'2025-03-18','has_breakfast':False,'ratings':_hotel_ratings()},headers=hj).json()
+    assert off['breakfast_ratings']==[] and off['breakfast_average_rating'] is None
+    on=client.put(f"/api/v1/hotels/{hotel['id']}",json={'name':'Hotel Toggle R','visit_date':'2025-03-18','has_breakfast':True,'ratings':_hotel_ratings()},headers=hj).json()
+    assert on['breakfast_average_rating']==7 and len(on['breakfast_ratings'])==1
+
+def test_hotel_amenity_s_historical_hotel_without_amenities_still_works():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    r=client.post('/api/v1/hotels',json={'name':'Hotel Historico S','visit_date':'2025-03-19','location':'Colonia','total_price':'1200.00','currency':'UYU','ratings':_hotel_ratings()},headers=hj)
     assert r.status_code==201
     d=r.json()
-    assert d['has_pool'] is False and d['has_breakfast'] is False and d['pool_rating'] is None and d['breakfast_rating'] is None
+    assert d['has_pool'] is False and d['has_breakfast'] is False
+    assert d['pool_ratings']==[] and d['pool_average_rating'] is None
+    assert d['breakfast_ratings']==[] and d['breakfast_average_rating'] is None
     assert d['total_price']=='1200.00' and d['currency']=='UYU'
 
 

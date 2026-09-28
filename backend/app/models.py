@@ -19,6 +19,9 @@ class SpotCategory(str, Enum):
     CULTURAL='cultural'
     SHOPPING='shopping'
     OTHER='other'
+class HotelAmenity(str, Enum):
+    POOL='pool'
+    BREAKFAST='breakfast'
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .db import Base
 
@@ -138,12 +141,11 @@ class HotelVisit(Base):
     image_path: Mapped[str|None]=mapped_column(String(500), nullable=True)
     has_pool: Mapped[bool]=mapped_column(Boolean, nullable=False, server_default='false')
     pool_heated: Mapped[bool|None]=mapped_column(Boolean, nullable=True)
-    pool_rating: Mapped[int|None]=mapped_column(Integer, nullable=True)
     has_breakfast: Mapped[bool]=mapped_column(Boolean, nullable=False, server_default='false')
-    breakfast_rating: Mapped[int|None]=mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime]=mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime]=mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
     ratings=relationship('HotelRating', back_populates='hotel', cascade='all, delete-orphan')
+    amenity_ratings=relationship('HotelAmenityRating', back_populates='hotel', cascade='all, delete-orphan')
 
 class HotelRating(Base):
     __tablename__='hotel_ratings'
@@ -155,6 +157,19 @@ class HotelRating(Base):
     opinion: Mapped[str|None]=mapped_column(Text, nullable=True)
     hotel=relationship('HotelVisit', back_populates='ratings')
     user=relationship('User', back_populates='hotel_ratings')
+
+class HotelAmenityRating(Base):
+    __tablename__='hotel_amenity_ratings'
+    __table_args__=(UniqueConstraint('hotel_id','user_id','amenity',name='uq_hotel_amenity_rating'),)
+    id: Mapped[int]=mapped_column(primary_key=True)
+    hotel_id: Mapped[int]=mapped_column(ForeignKey('hotel_visits.id'), nullable=False)
+    user_id: Mapped[int]=mapped_column(ForeignKey('users.id'), nullable=False)
+    amenity: Mapped[HotelAmenity]=mapped_column(SQLEnum(HotelAmenity,native_enum=False,length=9), nullable=False)
+    score: Mapped[int]=mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime]=mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime]=mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    hotel=relationship('HotelVisit', back_populates='amenity_ratings')
+    user=relationship('User')
 
 class RefreshToken(Base):
     __tablename__='refresh_tokens'
