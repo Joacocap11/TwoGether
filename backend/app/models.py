@@ -1,11 +1,14 @@
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
-from sqlalchemy import String, Text, Date, DateTime, ForeignKey, Float, Boolean, Numeric, func, UniqueConstraint, Enum as SQLEnum
+from sqlalchemy import String, Text, Date, DateTime, ForeignKey, Float, Integer, Boolean, Numeric, func, UniqueConstraint, Enum as SQLEnum
 class PlaceCategory(str, Enum):
     LUNCH='lunch'
     SNACK='snack'
     DINNER='dinner'
+class SpotStatus(str, Enum):
+    WISHLIST='wishlist'
+    VISITED='visited'
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .db import Base
 
@@ -25,6 +28,7 @@ class User(Base):
     media_ratings=relationship('MediaRating', back_populates='user')
     hotel_ratings=relationship('HotelRating', back_populates='user')
     refresh_tokens=relationship('RefreshToken', back_populates='user', cascade='all, delete-orphan')
+    spot_ratings=relationship('SpotRating', back_populates='user')
 
 class PlaceVisit(Base):
     __tablename__='place_visits'
@@ -150,3 +154,33 @@ class RefreshToken(Base):
     user_agent: Mapped[str|None]=mapped_column(String(300), nullable=True)
     created_at: Mapped[datetime]=mapped_column(DateTime, server_default=func.now())
     user=relationship('User', back_populates='refresh_tokens', foreign_keys=[user_id])
+
+class Spot(Base):
+    __tablename__='spots'
+    id: Mapped[int]=mapped_column(primary_key=True)
+    name: Mapped[str]=mapped_column(String(200), index=True)
+    location: Mapped[str|None]=mapped_column(String(300), nullable=True)
+    visit_date: Mapped[date|None]=mapped_column(Date, nullable=True)
+    notes: Mapped[str|None]=mapped_column(Text, nullable=True)
+    image_path: Mapped[str|None]=mapped_column(String(500), nullable=True)
+    status: Mapped[SpotStatus]=mapped_column(SQLEnum(SpotStatus,native_enum=False,length=8), nullable=False, server_default=SpotStatus.WISHLIST.name)
+    created_at: Mapped[datetime]=mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime]=mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    ratings=relationship('SpotRating', back_populates='spot', cascade='all, delete-orphan')
+
+class SpotRating(Base):
+    # Score is a real Integer (unlike UserRating/MediaRating/HotelRating, which
+    # store score as Float): the product spec for Spots explicitly requires an
+    # integer 1-10 scale, so this intentionally does not reuse the Float
+    # convention of the other three rating models.
+    __tablename__='spot_ratings'
+    __table_args__=(UniqueConstraint('spot_id','user_id',name='uq_spot_rating_spot_user'),)
+    id: Mapped[int]=mapped_column(primary_key=True)
+    score: Mapped[int]=mapped_column(Integer, nullable=False)
+    comment: Mapped[str|None]=mapped_column(Text, nullable=True)
+    spot_id: Mapped[int]=mapped_column(ForeignKey('spots.id'))
+    user_id: Mapped[int]=mapped_column(ForeignKey('users.id'))
+    created_at: Mapped[datetime]=mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime]=mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    spot=relationship('Spot', back_populates='ratings')
+    user=relationship('User', back_populates='spot_ratings')

@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
-from .models import PlaceCategory
+from .models import PlaceCategory, SpotStatus
 
 class Currency(str, Enum):
     UYU='UYU'
@@ -74,3 +74,18 @@ class HotelOut(HotelCreate):
     model_config=ConfigDict(from_attributes=True); id:int; image_path:str|None=None; created_at:datetime|None=None; updated_at:datetime|None=None; ratings:list[HotelRatingOut]=[]; average_rating:float|None=None
 class TestOut(BaseModel): model_config=ConfigDict(from_attributes=True); id:int; title:str; result:str|None=None; test_date:date; notes:str|None=None; image_path:str|None=None; created_at:datetime|None=None; updated_at:datetime|None=None; outcomes:list[TestOutcomeOut]=[]
 class TestComplete(BaseModel): title:str; test_date:date; notes:str|None=None; outcomes:list[TestOutcomeCreate]=Field(min_length=2,max_length=2)
+
+class SpotRatingCreate(BaseModel): score:int=Field(ge=1,le=10); comment:str|None=None
+class SpotRatingUpdate(BaseModel): score:int=Field(ge=1,le=10); comment:str|None=None
+class SpotRatingOut(BaseModel):
+    model_config=ConfigDict(from_attributes=True)
+    id:int; spot_id:int; user_id:int; score:int; comment:str|None=None
+    created_at:datetime|None=None; updated_at:datetime|None=None; user:UserSummary
+class SpotBase(BaseModel): name:str; location:str|None=None; visit_date:date|None=None; notes:str|None=None
+class SpotCreate(SpotBase): status:SpotStatus=SpotStatus.WISHLIST
+class SpotUpdate(SpotBase): status:SpotStatus
+class SpotOut(SpotBase):
+    model_config=ConfigDict(from_attributes=True)
+    id:int; status:SpotStatus; image_path:str|None=None
+    created_at:datetime|None=None; updated_at:datetime|None=None
+    average_rating:float|None=None; ratings:list[SpotRatingOut]=[]

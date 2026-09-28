@@ -13,5 +13,6 @@ export default function TabsLayout() {
     <Tabs.Screen name="tests" options={{ title: 'Tests', tabBarIcon: ({ color, size }) => <Ionicons name="clipboard-outline" color={color} size={size} /> }} />
     <Tabs.Screen name="media" options={{ title: 'Series', tabBarIcon: ({ color, size }) => <Ionicons name="film-outline" color={color} size={size} /> }} />
     <Tabs.Screen name="hotels" options={{ title: 'Hoteles', tabBarIcon: ({ color, size }) => <Ionicons name="bed-outline" color={color} size={size} /> }} />
+    <Tabs.Screen name="spots" options={{ title: 'Lugares', tabBarIcon: ({ color, size }) => <Ionicons name="map-outline" color={color} size={size} /> }} />
   </Tabs>;
 }

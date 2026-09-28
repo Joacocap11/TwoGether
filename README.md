@@ -120,6 +120,8 @@ El frontend consume la API mediante `/api/v1` y Nginx reenvía también `/upload
 
 Una visita (`PlaceVisit`) tiene muchos platos (`Dish`) y ratings (`UserRating`) relacionados con los dos usuarios compartidos. `UserRating.comment` es la única opinión libre por persona. `TestOutcome` guarda una captura opcional por usuario; los campos textuales de resultado se mantienen nullable únicamente para compatibilidad histórica y ya no se usan en el flujo actual. Los promedios de plato y lugar se calculan dinámicamente y nunca se persisten.
 
+Un lugar (`Spot`) es independiente de `PlaceVisit`: representa un sitio con estado `wishlist` (por visitar) o `visited` (visitado), sin fecha de visita obligatoria. Cada usuario puede tener a lo sumo una valoración por `Spot` (`SpotRating`, UNIQUE `spot_id`+`user_id`), con `score` entero 1-10 y `comment` opcional; solo el dueño de la valoración puede editarla (`PUT /spots/{id}/ratings/me`). Puntuar o listar ratings solo está permitido mientras `Spot.status == 'visited'`. Al volver un `Spot` de `visited` a `wishlist` las `SpotRating` existentes **no se borran**: la API simplemente deja de mostrarlas (lista vacía, promedio `null`) mientras esté en `wishlist`, y reaparecen intactas si vuelve a `visited`. Decisión explícita para no perder opiniones ya escritas por un cambio de estado reversible.
+
 ## Fuera del alcance
 
 No incluye app móvil, notificaciones, mapas avanzados/geolocalización, redes sociales/chat, IA/OCR, importación/exportación masiva, gamificación, reservas, recomendaciones ni estadísticas avanzadas/ Wrapped.

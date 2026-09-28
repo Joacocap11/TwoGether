@@ -70,6 +70,93 @@ def test_media_and_hotels_crud():
     assert client.delete(f'/api/v1/hotels/{hotel_id}',headers=h).status_code==204
     assert client.get('/api/v1/media',headers={}).status_code==401
     assert client.get('/api/v1/hotels',headers={}).status_code==401
+
+def test_spot_a_create_wishlist_minimal():
+    joaco=token('a@example.com'); hj={'Authorization':f'Bearer {joaco}'}
+    spot=client.post('/api/v1/spots',json={'name':'Parque Rodo'},headers=hj).json()
+    assert spot['status']=='wishlist' and spot['visit_date'] is None and spot['ratings']==[] and spot['average_rating'] is None
+
+def test_spot_b_create_visited_with_visit_date():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    spot=client.post('/api/v1/spots',json={'name':'Cabo Polonio','status':'visited','visit_date':'2025-06-01'},headers=hj).json()
+    assert spot['status']=='visited' and spot['visit_date']=='2025-06-01'
+
+def test_spot_c_d_e_f_list_all_and_status_filter():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    client.post('/api/v1/spots',json={'name':'Wishlist Only'},headers=hj)
+    client.post('/api/v1/spots',json={'name':'Visited Only','status':'visited'},headers=hj)
+    everyone=client.get('/api/v1/spots',headers=hj).json()
+    assert {s['name'] for s in everyone}>={'Wishlist Only','Visited Only'}
+    wishlist_only=client.get('/api/v1/spots?status=wishlist',headers=hj).json()
+    assert all(s['status']=='wishlist' for s in wishlist_only)
+    assert 'Wishlist Only' in {s['name'] for s in wishlist_only}
+    assert 'Visited Only' not in {s['name'] for s in wishlist_only}
+    visited_only=client.get('/api/v1/spots?status=visited',headers=hj).json()
+    assert all(s['status']=='visited' for s in visited_only)
+    assert 'Visited Only' in {s['name'] for s in visited_only}
+    assert 'Wishlist Only' not in {s['name'] for s in visited_only}
+    assert client.get('/api/v1/spots?status=bogus',headers=hj).status_code==422
+
+def test_spot_g_h_wishlist_visited_transitions_clear_visit_date():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    spot=client.post('/api/v1/spots',json={'name':'Punta del Diablo'},headers=hj).json()
+    assert spot['visit_date'] is None
+    visited=client.put(f"/api/v1/spots/{spot['id']}",json={'name':'Punta del Diablo','status':'visited','visit_date':'2025-07-04'},headers=hj)
+    assert visited.status_code==200 and visited.json()['status']=='visited' and visited.json()['visit_date']=='2025-07-04'
+    back=client.put(f"/api/v1/spots/{spot['id']}",json={'name':'Punta del Diablo','status':'wishlist','visit_date':'2025-07-04'},headers=hj)
+    assert back.status_code==200 and back.json()['status']=='wishlist' and back.json()['visit_date'] is None
+
+def test_spot_i_ratings_survive_visited_wishlist_visited():
+    joaco=token('a@example.com'); hj={'Authorization':f'Bearer {joaco}'}
+    selena=token('b@example.com'); hs={'Authorization':f'Bearer {selena}'}
+    spot=client.post('/api/v1/spots',json={'name':'Cerro Pan de Azucar','status':'visited'},headers=hj).json()
+    client.post(f"/api/v1/spots/{spot['id']}/ratings",json={'score':9,'comment':'Lindo'},headers=hj)
+    client.post(f"/api/v1/spots/{spot['id']}/ratings",json={'score':7,'comment':'Ok'},headers=hs)
+    hidden=client.put(f"/api/v1/spots/{spot['id']}",json={'name':'Cerro Pan de Azucar','status':'wishlist'},headers=hj)
+    assert hidden.json()['ratings']==[] and hidden.json()['average_rating'] is None
+    assert client.get(f"/api/v1/spots/{spot['id']}/ratings",headers=hj).json()==[]
+    restored=client.put(f"/api/v1/spots/{spot['id']}",json={'name':'Cerro Pan de Azucar','status':'visited'},headers=hj)
+    assert len(restored.json()['ratings'])==2 and restored.json()['average_rating']==8
+    assert {r['score'] for r in restored.json()['ratings']}=={9,7}
+
+def test_spot_j_rating_rejected_while_wishlist():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    spot=client.post('/api/v1/spots',json={'name':'Laguna Garzon'},headers=hj).json()
+    assert client.post(f"/api/v1/spots/{spot['id']}/ratings",json={'score':6},headers=hj).status_code==409
+    assert client.post(f"/api/v1/spots/{spot['id']}/ratings",json={'score':0},headers=hj).status_code==422
+    assert client.post(f"/api/v1/spots/{spot['id']}/ratings",json={'score':11},headers=hj).status_code==422
+
+def test_spot_k_l_m_two_users_rate_separately_average_and_comments():
+    joaco=token('a@example.com'); hj={'Authorization':f'Bearer {joaco}'}
+    selena=token('b@example.com'); hs={'Authorization':f'Bearer {selena}'}
+    spot=client.post('/api/v1/spots',json={'name':'Playa Grande','status':'visited'},headers=hj).json()
+    rj=client.post(f"/api/v1/spots/{spot['id']}/ratings",json={'score':9,'comment':'Me encanto el verde que tenia.'},headers=hj)
+    assert rj.status_code==201 and rj.json()['comment']=='Me encanto el verde que tenia.'
+    assert client.post(f"/api/v1/spots/{spot['id']}/ratings",json={'score':7},headers=hj).status_code==409
+    rs=client.post(f"/api/v1/spots/{spot['id']}/ratings",json={'score':8},headers=hs)
+    assert rs.status_code==201 and rs.json()['comment'] is None
+    detail=client.get(f"/api/v1/spots/{spot['id']}",headers=hj).json()
+    assert len(detail['ratings'])==2 and detail['average_rating']==8.5
+    updated=client.put(f"/api/v1/spots/{spot['id']}/ratings/me",json={'score':10,'comment':'Aun mejor la segunda vez'},headers=hj)
+    assert updated.status_code==200 and updated.json()['score']==10
+    fresh_spot=client.post('/api/v1/spots',json={'name':'Isla de Lobos','status':'visited'},headers=hj).json()
+    assert client.put(f"/api/v1/spots/{fresh_spot['id']}/ratings/me",json={'score':5},headers=hs).status_code==404
+    unaffected=client.get(f"/api/v1/spots/{spot['id']}",headers=hj).json()
+    selena_row=[r for r in unaffected['ratings'] if r['user_id']==rs.json()['user_id']][0]
+    assert selena_row['score']==8 and unaffected['average_rating']==9
+
+def test_spot_n_upload_image():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    spot=client.post('/api/v1/spots',json={'name':'Punta Ballena'},headers=hj).json()
+    uploaded=client.post(f"/api/v1/spots/{spot['id']}/upload",files={'image':('spot.png',b'spot','image/png')},headers=hj)
+    assert uploaded.status_code==200 and uploaded.json()['image_path']
+
+def test_spot_o_delete():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    spot=client.post('/api/v1/spots',json={'name':'Aguas Dulces'},headers=hj).json()
+    assert client.delete(f"/api/v1/spots/{spot['id']}",headers=hj).status_code==204
+    assert client.get(f"/api/v1/spots/{spot['id']}",headers=hj).status_code==404
+
 def test_admin_user_management_and_password_flow():
     with SessionLocal() as db:
         db.query(User).filter(User.email=='a@example.com').update({'is_admin':True})
