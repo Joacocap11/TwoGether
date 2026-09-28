@@ -71,6 +71,97 @@ def test_media_and_hotels_crud():
     assert client.get('/api/v1/media',headers={}).status_code==401
     assert client.get('/api/v1/hotels',headers={}).status_code==401
 
+def _hotel_ratings():
+    return [{'user_id':1,'score':7,'opinion':None},{'user_id':2,'score':8,'opinion':None}]
+
+def test_hotel_amenity_a_no_pool_no_breakfast():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    r=client.post('/api/v1/hotels',json={'name':'Hotel Sin Amenities','visit_date':'2025-03-01','ratings':_hotel_ratings()},headers=hj)
+    assert r.status_code==201
+    d=r.json()
+    assert d['has_pool'] is False and d['pool_heated'] is None and d['pool_rating'] is None
+    assert d['has_breakfast'] is False and d['breakfast_rating'] is None
+
+def test_hotel_amenity_b_pool_not_heated_with_rating():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    r=client.post('/api/v1/hotels',json={'name':'Hotel Piscina Fria','visit_date':'2025-03-02','has_pool':True,'pool_heated':False,'pool_rating':6,'ratings':_hotel_ratings()},headers=hj)
+    assert r.status_code==201
+    d=r.json()
+    assert d['has_pool'] is True and d['pool_heated'] is False and d['pool_rating']==6
+
+def test_hotel_amenity_c_pool_heated_with_rating():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    r=client.post('/api/v1/hotels',json={'name':'Hotel Piscina Climatizada','visit_date':'2025-03-03','has_pool':True,'pool_heated':True,'pool_rating':9,'ratings':_hotel_ratings()},headers=hj)
+    assert r.status_code==201
+    d=r.json()
+    assert d['has_pool'] is True and d['pool_heated'] is True and d['pool_rating']==9
+
+def test_hotel_amenity_d_breakfast_with_rating():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    r=client.post('/api/v1/hotels',json={'name':'Hotel Desayuno','visit_date':'2025-03-04','has_breakfast':True,'breakfast_rating':8,'ratings':_hotel_ratings()},headers=hj)
+    assert r.status_code==201
+    d=r.json()
+    assert d['has_breakfast'] is True and d['breakfast_rating']==8
+
+def test_hotel_amenity_e_pool_and_breakfast_together():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    r=client.post('/api/v1/hotels',json={'name':'Hotel Completo','visit_date':'2025-03-05','has_pool':True,'pool_heated':True,'pool_rating':10,'has_breakfast':True,'breakfast_rating':7,'ratings':_hotel_ratings()},headers=hj)
+    assert r.status_code==201
+    d=r.json()
+    assert d['pool_rating']==10 and d['breakfast_rating']==7
+
+def test_hotel_amenity_f_pool_rating_below_range_rejected():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    r=client.post('/api/v1/hotels',json={'name':'Hotel Invalido','visit_date':'2025-03-06','has_pool':True,'pool_rating':0,'ratings':_hotel_ratings()},headers=hj)
+    assert r.status_code==422
+
+def test_hotel_amenity_g_pool_rating_above_range_rejected():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    r=client.post('/api/v1/hotels',json={'name':'Hotel Invalido','visit_date':'2025-03-07','has_pool':True,'pool_rating':11,'ratings':_hotel_ratings()},headers=hj)
+    assert r.status_code==422
+
+def test_hotel_amenity_h_breakfast_rating_below_range_rejected():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    r=client.post('/api/v1/hotels',json={'name':'Hotel Invalido','visit_date':'2025-03-08','has_breakfast':True,'breakfast_rating':0,'ratings':_hotel_ratings()},headers=hj)
+    assert r.status_code==422
+
+def test_hotel_amenity_i_breakfast_rating_above_range_rejected():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    r=client.post('/api/v1/hotels',json={'name':'Hotel Invalido','visit_date':'2025-03-09','has_breakfast':True,'breakfast_rating':11,'ratings':_hotel_ratings()},headers=hj)
+    assert r.status_code==422
+
+def test_hotel_amenity_j_has_pool_false_clears_dependent_fields():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    r=client.post('/api/v1/hotels',json={'name':'Hotel Piscina Ignorada','visit_date':'2025-03-10','has_pool':False,'pool_heated':True,'pool_rating':9,'ratings':_hotel_ratings()},headers=hj)
+    assert r.status_code==201
+    d=r.json()
+    assert d['has_pool'] is False and d['pool_heated'] is None and d['pool_rating'] is None
+
+def test_hotel_amenity_k_has_breakfast_false_clears_rating():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    r=client.post('/api/v1/hotels',json={'name':'Hotel Desayuno Ignorado','visit_date':'2025-03-11','has_breakfast':False,'breakfast_rating':9,'ratings':_hotel_ratings()},headers=hj)
+    assert r.status_code==201
+    d=r.json()
+    assert d['has_breakfast'] is False and d['breakfast_rating'] is None
+
+def test_hotel_amenity_l_update_true_to_false_clears_fields():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    created=client.post('/api/v1/hotels',json={'name':'Hotel Toggle','visit_date':'2025-03-12','has_pool':True,'pool_heated':True,'pool_rating':8,'has_breakfast':True,'breakfast_rating':6,'ratings':_hotel_ratings()},headers=hj).json()
+    updated=client.put(f"/api/v1/hotels/{created['id']}",json={'name':'Hotel Toggle','visit_date':'2025-03-12','has_pool':False,'has_breakfast':False,'ratings':_hotel_ratings()},headers=hj)
+    assert updated.status_code==200
+    d=updated.json()
+    assert d['has_pool'] is False and d['pool_heated'] is None and d['pool_rating'] is None
+    assert d['has_breakfast'] is False and d['breakfast_rating'] is None
+
+def test_hotel_amenity_m_historical_hotel_without_amenity_fields_serializes():
+    hj={'Authorization':f'Bearer {token("a@example.com")}'}
+    r=client.post('/api/v1/hotels',json={'name':'Hotel Historico','visit_date':'2025-03-13','location':'Colonia','total_price':'1200.00','currency':'UYU','ratings':_hotel_ratings()},headers=hj)
+    assert r.status_code==201
+    d=r.json()
+    assert d['has_pool'] is False and d['has_breakfast'] is False and d['pool_rating'] is None and d['breakfast_rating'] is None
+    assert d['total_price']=='1200.00' and d['currency']=='UYU'
+
+
 def test_spot_a_create_wishlist_minimal():
     joaco=token('a@example.com'); hj={'Authorization':f'Bearer {joaco}'}
     spot=client.post('/api/v1/spots',json={'name':'Parque Rodo'},headers=hj).json()

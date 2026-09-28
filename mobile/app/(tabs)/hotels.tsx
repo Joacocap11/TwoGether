@@ -63,6 +63,16 @@ function HotelCard({ item, users, onPress }: { item: Hotel; users: User[]; onPre
         {item.location ? <Text style={styles.muted}>{item.location}</Text> : null}
         <DateText value={item.visit_date} />
         <Text style={{ color: colors.blue, fontWeight: '800', marginTop: 4 }}>{formatPrice(item.total_price, item.currency)}</Text>
+        {(item.has_pool || item.has_breakfast) ? (
+          <View style={{ marginTop: 4 }}>
+            {item.has_pool ? (
+              <Text style={styles.muted}>Piscina{item.pool_heated ? ' · Climatizada' : ''}{item.pool_rating != null ? ` · ${item.pool_rating}/10` : ''}</Text>
+            ) : null}
+            {item.has_breakfast ? (
+              <Text style={styles.muted}>Desayuno{item.breakfast_rating != null ? ` · ${item.breakfast_rating}/10` : ''}</Text>
+            ) : null}
+          </View>
+        ) : null}
         <View style={[styles.row, { marginTop: 6, flexWrap: 'wrap', gap: 10 }]}>
           {ordered.map(rating => {
             const name = users.find(u => u.id === rating.user_id)?.name ?? 'Usuario';

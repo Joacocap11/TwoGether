@@ -65,10 +65,26 @@ class HotelCreate(BaseModel):
     location:str|None=None
     total_price:Decimal|None=Field(default=None, ge=0)
     currency:Currency|None=None
+    has_pool:bool=False
+    pool_heated:bool|None=None
+    pool_rating:int|None=Field(default=None, ge=1, le=10)
+    has_breakfast:bool=False
+    breakfast_rating:int|None=Field(default=None, ge=1, le=10)
     ratings:list[HotelRatingCreate]=Field(min_length=2,max_length=2)
     @model_validator(mode='after')
     def require_currency_for_price(self):
         if self.total_price is not None and self.currency is None: raise ValueError('currency is required when total_price is provided')
+        return self
+    @model_validator(mode='after')
+    def apply_pool_and_breakfast_rules(self):
+        if not self.has_pool:
+            self.pool_heated=None; self.pool_rating=None
+        elif self.pool_rating is None:
+            raise ValueError('pool_rating is required when has_pool is true')
+        if not self.has_breakfast:
+            self.breakfast_rating=None
+        elif self.breakfast_rating is None:
+            raise ValueError('breakfast_rating is required when has_breakfast is true')
         return self
 class HotelOut(HotelCreate):
     model_config=ConfigDict(from_attributes=True); id:int; image_path:str|None=None; created_at:datetime|None=None; updated_at:datetime|None=None; ratings:list[HotelRatingOut]=[]; average_rating:float|None=None

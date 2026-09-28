@@ -45,6 +45,11 @@ export default function HotelDetail() {
   const [entries, setEntries] = useState<EntryDraft[]>([]);
   const [error, setError] = useState('');
   const [modalImage, setModalImage] = useState<string>();
+  const [hasPool, setHasPool] = useState(false);
+  const [poolHeated, setPoolHeated] = useState(false);
+  const [poolRating, setPoolRating] = useState(0);
+  const [hasBreakfast, setHasBreakfast] = useState(false);
+  const [breakfastRating, setBreakfastRating] = useState(0);
 
   useEffect(() => {
     const item = detail.data;
@@ -54,6 +59,11 @@ export default function HotelDetail() {
     setLocation(item.location ?? '');
     setPrice(item.total_price == null ? '' : String(item.total_price));
     setCurrency(item.currency ?? 'UYU');
+    setHasPool(item.has_pool);
+    setPoolHeated(item.pool_heated ?? false);
+    setPoolRating(item.pool_rating ?? 0);
+    setHasBreakfast(item.has_breakfast);
+    setBreakfastRating(item.breakfast_rating ?? 0);
     const ordered = orderByTone(item.ratings, r => users.data!.find(u => u.id === r.user_id)?.name);
     setEntries(
       ordered.map(rating => ({
@@ -79,12 +89,19 @@ export default function HotelDetail() {
       if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date) || entries.length !== 2) {
         throw new Error('Agrega un nombre, una fecha ISO (AAAA-MM-DD) y dos valoraciones.');
       }
+      if (hasPool && !poolRating) throw new Error('Agregá una puntuación de piscina.');
+      if (hasBreakfast && !breakfastRating) throw new Error('Agregá una puntuación de desayuno.');
       const payload = {
         name,
         visit_date: date,
         location: location || null,
         total_price: price === '' ? null : Number(price),
         currency: price === '' ? null : currency,
+        has_pool: hasPool,
+        pool_heated: hasPool ? poolHeated : null,
+        pool_rating: hasPool ? poolRating : null,
+        has_breakfast: hasBreakfast,
+        breakfast_rating: hasBreakfast ? breakfastRating : null,
         ratings: entries.map(entry => ({ user_id: entry.user_id, score: entry.score, opinion: entry.opinion || null })),
       };
       // Once the hotel exists (this save or an earlier failed attempt), every retry updates
@@ -135,6 +152,20 @@ export default function HotelDetail() {
           />
         </View>
         <Text style={{ color: colors.blue, fontWeight: '800', fontSize: 17, marginTop: 8 }}>{formatPrice(item.total_price, item.currency)}</Text>
+        {(item.has_pool || item.has_breakfast) ? (
+          <View style={{ marginTop: 8 }}>
+            {item.has_pool ? (
+              <Text style={styles.muted}>
+                Piscina{item.pool_heated ? ' · Climatizada' : ''}{item.pool_rating != null ? ` · ${item.pool_rating}/10` : ''}
+              </Text>
+            ) : null}
+            {item.has_breakfast ? (
+              <Text style={styles.muted}>
+                Desayuno{item.breakfast_rating != null ? ` · ${item.breakfast_rating}/10` : ''}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
         {item.image_path ? (
           <Pressable onPress={() => setModalImage(item.image_path!)} style={{ alignSelf: 'center', marginTop: 16 }}>
             <Photo path={item.image_path} size={180} />
@@ -187,6 +218,28 @@ export default function HotelDetail() {
       </View>
       <Text style={styles.label}>Foto</Text>
       <PhotoPicker label="Foto del hotel" uri={photo?.uri} existing={item?.image_path} onPick={pickPhoto} />
+      <Text style={styles.label}>Servicios / Comodidades</Text>
+      <Pressable onPress={() => setHasPool(!hasPool)} style={[styles.chip, hasPool && styles.chipActive, { marginBottom: 10 }]}>
+        <Text style={[styles.chipText, hasPool && styles.chipTextActive]}>{hasPool ? '✓ Tiene piscina' : 'Tiene piscina'}</Text>
+      </Pressable>
+      {hasPool ? (
+        <>
+          <Pressable onPress={() => setPoolHeated(!poolHeated)} style={[styles.chip, poolHeated && styles.chipActive, { marginBottom: 10 }]}>
+            <Text style={[styles.chipText, poolHeated && styles.chipTextActive]}>{poolHeated ? '✓ Piscina climatizada' : 'Piscina climatizada'}</Text>
+          </Pressable>
+          <Text style={styles.label}>Puntuación piscina</Text>
+          <ScoreSelector value={poolRating} tone="joaco" onChange={setPoolRating} />
+        </>
+      ) : null}
+      <Pressable onPress={() => setHasBreakfast(!hasBreakfast)} style={[styles.chip, hasBreakfast && styles.chipActive, { marginTop: 14, marginBottom: 10 }]}>
+        <Text style={[styles.chipText, hasBreakfast && styles.chipTextActive]}>{hasBreakfast ? '✓ Tiene desayuno' : 'Tiene desayuno'}</Text>
+      </Pressable>
+      {hasBreakfast ? (
+        <>
+          <Text style={styles.label}>Puntuación desayuno</Text>
+          <ScoreSelector value={breakfastRating} tone="joaco" onChange={setBreakfastRating} />
+        </>
+      ) : null}
       {entries.map((entry, index) => {
         const tone = personTone(entry.name);
         const accent = personColor(tone);
