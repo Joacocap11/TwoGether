@@ -62,7 +62,9 @@ export default function Tests() {
 }
 
 function TestCard({ item, onPress }: { item: TestRecord; onPress: () => void }) {
-  const photos = (item.outcomes ?? []).map(o => o.image_path).filter((path): path is string => Boolean(path));
+  const photos = orderByTone(item.outcomes ?? [], o => o.user.name)
+    .map(o => o.image_path)
+    .filter((path): path is string => Boolean(path));
   return (
     <Pressable onPress={onPress} style={[styles.card, { flexDirection: 'row', gap: 13 }]}>
       <PhotoGallery paths={photos} />
