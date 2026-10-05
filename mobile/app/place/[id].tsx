@@ -18,6 +18,7 @@ import {
   styles,
   colors,
   formatISO,
+  parseDecimalInput,
   personTone,
   personColor,
 } from '../../src/ui';
@@ -128,9 +129,9 @@ export default function PlaceScreen() {
           dish: {
             name: entry.dish.name,
             score: entry.dish.score,
-            dish_price: entry.dish.dish_price === '' ? null : Number(entry.dish.dish_price),
-            drink_price: entry.dish.drink_price === '' ? null : Number(entry.dish.drink_price),
-            dessert_price: entry.dish.dessert_price === '' ? null : Number(entry.dish.dessert_price),
+            dish_price: parseDecimalInput(entry.dish.dish_price),
+            drink_price: parseDecimalInput(entry.dish.drink_price),
+            dessert_price: parseDecimalInput(entry.dish.dessert_price),
           },
           rating: { score: entry.rating.score, comment: entry.rating.comment || null },
         })),

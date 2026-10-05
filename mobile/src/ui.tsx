@@ -20,6 +20,17 @@ export function Refreshable({ children, refreshing, onRefresh }: { children: Rea
 export function DateText({ value }: { value: string }) { const date = new Date(`${value}T00:00:00`); return <Text style={styles.muted}>{Number.isNaN(date.valueOf()) ? value : date.toLocaleDateString('es-UY', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>; }
 export function formatISO(value: string) { const parts = value.trim().split(/[/-]/); if (parts.length !== 3) return value; if (parts[0].length === 4) return value; return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`; }
 export function dateDisplay(value: string) { const parts = value.split('-'); return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : value; }
+// Decimal input: user types whole units with NO separator ("1950") -> 1950, never 19.50.
+// Accepts either ',' or '.' as the explicit decimal separator; more than one decimal
+// separator in the normalized string is invalid input (returns null), never guessed.
+export function parseDecimalInput(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const normalized = trimmed.replace(/,/g, '.');
+  if ((normalized.match(/\./g)?.length ?? 0) > 1) return null;
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : null;
+}
 export type PersonTone = 'joaco' | 'selena';
 export function personTone(name?: string | null): PersonTone { return /joa?co|joaqu[ií]n/i.test(name ?? '') ? 'joaco' : 'selena'; }
 export function personColor(tone: PersonTone) { return tone === 'joaco' ? colors.yellow : colors.blue; }

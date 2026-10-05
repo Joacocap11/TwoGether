@@ -18,6 +18,7 @@ import {
   styles,
   colors,
   orderByTone,
+  parseDecimalInput,
   personTone,
   personColor,
 } from '../../src/ui';
@@ -59,6 +60,9 @@ export default function HotelDetail() {
     setName(item.name);
     setDate(item.visit_date);
     setLocation(item.location ?? '');
+    setPrice(item.total_price != null ? String(item.total_price) : '');
+    setCurrency(item.currency ?? 'UYU');
+    setHasPool(item.has_pool);
     setPoolHeated(item.pool_heated ?? false);
     setJoacoPoolRating(item.pool_ratings.find(r => r.user_id === users.data![0]?.id)?.score ?? 0);
     setSelenaPoolRating(item.pool_ratings.find(r => r.user_id === users.data![1]?.id)?.score ?? 0);
@@ -94,7 +98,7 @@ export default function HotelDetail() {
         name,
         visit_date: date,
         location: location || null,
-        total_price: price === '' ? null : Number(price),
+        total_price: parseDecimalInput(price),
         currency: price === '' ? null : currency,
         has_pool: hasPool,
         pool_heated: hasPool ? poolHeated : null,

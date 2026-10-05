@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { api, Dish, Place, placeCategoryLabels } from '../../src/api';
 import { Button, DateText, ErrorState, Loading, PhotoGallery, styles, colors } from '../../src/ui';
+import { formatPrice } from './hotels';
 
 const categoryLabels: Record<string, string> = { all: 'Todos', ...placeCategoryLabels };
 
@@ -19,9 +20,17 @@ export default function Restaurants() {
   return <View style={styles.screen}><FlatList data={items} keyExtractor={item => String(item.id)} contentContainerStyle={styles.content} refreshing={query.isRefetching} onRefresh={() => query.refetch()} ListHeaderComponent={<><Text style={styles.title}>Restaurantes</Text><Text style={styles.subtitle}>Nuestros restaurantes y momentos compartidos.</Text><TextInput value={search} onChangeText={setSearch} placeholder="Buscar por nombre o ubicación" placeholderTextColor="#61717B" style={styles.input} /><View style={{ flexDirection: 'row', marginBottom: 16, flexWrap: 'wrap', gap: 7 }}>{categories.map(value => <Pressable key={value} onPress={() => setCategory(value)} style={[styles.chip, category === value && styles.chipActive]}><Text style={[styles.chipText, category === value && styles.chipTextActive]}>{categoryLabels[value] ?? value}</Text></Pressable>)}</View><Button title="＋ Nuevo restaurante" onPress={() => router.push('/place/new')} /></>} renderItem={({ item }) => <RestaurantCard item={item} onPress={() => router.push(`/place/${item.id}`)} />} ListEmptyComponent={<View style={styles.empty}><Text style={styles.muted}>Aún no hay restaurantes.</Text></View>} /></View>;
 }
 
+function toAmount(value: number | string | null | undefined): number {
+  // Price fields may arrive as a Decimal serialized to a JSON string ("1199.00") even though
+  // they're typed as `number` — `+` on a string silently concatenates instead of adding,
+  // which is what produced "Total UYU 01199.0000" on this card.
+  if (value == null) return 0;
+  const n = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
 function dishTotal(dish?: Dish) {
   if (!dish) return 0;
-  return (dish.dish_price ?? 0) + (dish.drink_price ?? 0) + (dish.dessert_price ?? 0);
+  return toAmount(dish.dish_price) + toAmount(dish.drink_price) + toAmount(dish.dessert_price);
 }
 
 function RestaurantCard({ item, onPress }: { item: Place; onPress: () => void }) {
@@ -45,7 +54,7 @@ function RestaurantCard({ item, onPress }: { item: Place; onPress: () => void })
             <Text style={{ color: colors.ink, fontWeight: '700' }}>Plato {item.dish_average_rating != null ? `${item.dish_average_rating.toFixed(1)}/10` : '—'}</Text>
             <Text style={{ color: colors.ink, fontWeight: '700' }}>Lugar {item.place_average_rating != null ? `${item.place_average_rating.toFixed(1)}/10` : (item.average_rating != null ? `${item.average_rating.toFixed(1)}/10` : '—')}</Text>
           </View>
-          {total > 0 ? <Text style={[styles.muted, { marginTop: 3 }]}>Total {item.currency ?? 'UYU'} {total.toLocaleString('es-UY')}</Text> : null}
+          {total > 0 ? <Text style={[styles.muted, { marginTop: 3 }]}>Total {formatPrice(total, item.currency ?? 'UYU')}</Text> : null}
         </View>
       </View>
     </Pressable>

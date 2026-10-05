@@ -3,11 +3,18 @@ import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { api, Hotel, User } from '../../src/api';
-import { Button, DateText, ErrorState, Loading, Photo, styles, colors, orderByTone, personTone, personColor } from '../../src/ui';
+import { Button, DateText, ErrorState, Loading, Photo, styles, colors, orderByTone, personTone, personColor, parseDecimalInput } from '../../src/ui';
 
-export function formatPrice(total: number | null | undefined, currency: 'UYU' | 'USD' | null | undefined) {
-  if (total == null || !currency) return 'Precio no registrado';
-  return `${currency} ${total.toLocaleString('es-UY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const moneyFormatter = new Intl.NumberFormat('es-UY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// `total` may arrive from the API as a Decimal serialized to a JSON string (e.g. "1199.00"),
+// even though it's typed as `number` — coerce it before formatting so it never gets treated
+// as a string by downstream arithmetic/formatting (that produced "Total UYU 01199.0000").
+export function formatPrice(total: number | string | null | undefined, currency: 'UYU' | 'USD' | null | undefined) {
+  if (total == null || total === '' || !currency) return 'Precio no registrado';
+  const amount = typeof total === 'number' ? total : parseDecimalInput(String(total));
+  if (amount == null) return 'Precio no registrado';
+  return `${currency} ${moneyFormatter.format(amount)}`;
 }
 
 export default function Hotels() {

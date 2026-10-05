@@ -8,7 +8,7 @@ const REFRESH_TOKEN_KEY = 'twogether.refresh_token';
 
 export type User = { id: number; name: string; email: string; is_active: boolean; is_admin: boolean; must_change_password: boolean; created_at?: string };
 export type Rating = { id?: number; user_id: number; visit_id?: number; score: number; comment?: string | null; opinion?: string | null; user?: { id: number; name: string } };
-export type Dish = { id?: number; name: string; visit_id: number; user_id?: number | null; score: number; dish_price?: number | null; drink_price?: number | null; dessert_price?: number | null; image_path?: string | null; user?: { id: number; name: string } };
+export type Dish = { id?: number; name: string; visit_id: number; user_id?: number | null; score: number; dish_price?: number | string | null; drink_price?: number | string | null; dessert_price?: number | string | null; image_path?: string | null; user?: { id: number; name: string } };
 export type PlaceCategory = 'lunch' | 'snack' | 'dinner';
 export const placeCategoryLabels: Record<PlaceCategory, string> = { lunch: 'Almuerzo', snack: 'Merienda', dinner: 'Cena' };
 export type Place = { id: number; name: string; visit_date: string; location?: string | null; notes?: string | null; category?: PlaceCategory | null; currency?: 'UYU' | 'USD' | null; image_path?: string | null; photos?: string[]; average_rating?: number | null; place_average_rating?: number | null; dish_average_rating?: number | null; ratings?: Rating[]; dishes?: Dish[] };
@@ -17,7 +17,7 @@ export type TestRecord = { id: number; title: string; result?: string | null; te
 export type Media = { id: number; title: string; media_type: 'series' | 'movie'; watched_date: string; category?: string | null; image_path?: string | null; average_rating?: number | null; ratings: MediaRating[] };
 export type MediaRating = { id?: number; user_id: number; score: number; opinion?: string | null };
 export type HotelAmenityRating={id?: number; user_id: number; score: number};
-export type Hotel = { id: number; name: string; visit_date: string; location?: string | null; total_price?: number | null; currency?: 'UYU' | 'USD' | null; image_path?: string | null; average_rating?: number | null; ratings: HotelRating[]; has_pool: boolean; pool_heated?: boolean | null; has_breakfast: boolean; pool_ratings: HotelAmenityRating[]; pool_average_rating?: number | null; breakfast_ratings: HotelAmenityRating[]; breakfast_average_rating?: number | null };
+export type Hotel = { id: number; name: string; visit_date: string; location?: string | null; total_price?: number | string | null; currency?: 'UYU' | 'USD' | null; image_path?: string | null; average_rating?: number | null; ratings: HotelRating[]; has_pool: boolean; pool_heated?: boolean | null; has_breakfast: boolean; pool_ratings: HotelAmenityRating[]; pool_average_rating?: number | null; breakfast_ratings: HotelAmenityRating[]; breakfast_average_rating?: number | null };
 export type HotelRating = { id?: number; user_id: number; score: number; opinion?: string | null };
 export type SpotStatus = 'wishlist' | 'visited';
 export type SpotCategory = 'park' | 'museum' | 'beach' | 'viewpoint' | 'walk' | 'nature' | 'cultural' | 'shopping' | 'other';
